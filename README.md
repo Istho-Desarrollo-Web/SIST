@@ -152,6 +152,75 @@ VITE_API_URL=https://<backend>.up.railway.app/api
 
 ---
 
+## Despliegue alternativo — Render + Aiven MySQL
+
+Alternativa a Railway que combina **Render** (backend Node.js) con **Aiven** (MySQL gestionado).
+
+### Por qué esta combinación
+
+| Aspecto | Railway | Render + Aiven |
+| --- | --- | --- |
+| Free tier DB | Sí (MySQL plugin) | Aiven: 5 GB MySQL gratis |
+| Disk persistente | Volume gratuito | Disk desde Plan Starter ($7/mes) |
+| Detección automática | Nixpacks | Node.js auto-detectado |
+| `DATABASE_URL` | Inyectada automáticamente | Definir manualmente en dashboard |
+
+### 1 — Base de datos en Aiven
+
+1. Crear cuenta en [aiven.io](https://aiven.io) → nuevo servicio **MySQL**
+2. Seleccionar plan **Free** (5 GB, región más cercana)
+3. En la vista del servicio → pestaña **Overview** → copiar **Service URI**
+
+```text
+mysql://avnadmin:<pass>@<host>.aivencloud.com:PORT/defaultdb?ssl-mode=REQUIRED
+```
+
+4. Guardar ese string — se usará como `DATABASE_URL` en Render
+
+### 2 — Backend en Render
+
+1. Crear cuenta en [render.com](https://render.com)
+2. Nuevo proyecto → **Blueprint** → seleccionar repositorio y rama `main`
+3. Render detecta `soporte-ti-istho/server/render.yaml` automáticamente
+4. En el dashboard del servicio `sist-backend` → **Environment** → completar:
+
+```env
+DATABASE_URL=mysql://avnadmin:<pass>@<host>.aivencloud.com:PORT/defaultdb?ssl-mode=REQUIRED
+JWT_SECRET=<string seguro, mín. 32 caracteres>
+CORS_ORIGIN=https://<tu-app>.vercel.app
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=correo@istho.com.co
+EMAIL_PASS=<app_password>
+EMAIL_FROM=Soporte TI ISTHO <soporte@istho.com.co>
+```
+
+> `NODE_ENV`, `UPLOAD_PATH` y `MAX_FILE_SIZE` ya están definidos en `render.yaml`.
+
+5. Tras el primer deploy exitoso, ejecutar desde **Render Shell** (dashboard → Shell):
+
+```bash
+npm run db:migrate
+npm run db:seed
+```
+
+### 3 — Frontend en Vercel
+
+Igual que con Railway, pero usar la URL de Render:
+
+```env
+VITE_API_URL=https://sist-backend.onrender.com/api
+```
+
+Luego actualizar `CORS_ORIGIN` en Render con la URL de Vercel.
+
+### Nota sobre el Disk persistente
+
+El archivo `render.yaml` configura un **Disk de 5 GB** montado en `/data` para los archivos adjuntos. Esto requiere el **Plan Starter** de Render ($7/mes). En el **Plan Free** eliminar la sección `disk` del `render.yaml` y dejar `UPLOAD_PATH` vacío — los archivos no serán persistentes entre deploys.
+
+---
+
 ## Reglas de negocio — SLA
 
 | Prioridad | Tiempo | Respuesta | Resolución |

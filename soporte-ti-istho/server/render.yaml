@@ -1,0 +1,74 @@
+# render.yaml — Render Blueprint para SIST backend
+# Documentación: https://render.com/docs/blueprint-spec
+#
+# Requisitos:
+#   - Plan Starter ($7/mes) para usar Disk persistente (archivos adjuntos).
+#   - Plan Free: eliminar la sección `disk` y dejar UPLOAD_PATH vacío;
+#     los archivos se perderán en cada redeploy.
+#   - Base de datos MySQL externa (Aiven, TiDB Cloud, etc.) — ver README.
+
+services:
+  - type: web
+    name: sist-backend
+    runtime: node
+    rootDir: soporte-ti-istho/server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    plan: starter
+    autoDeploy: true
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Render inyecta PORT automáticamente — no definir manualmente.
+
+      # DATABASE_URL lo provee el proveedor MySQL externo (Aiven / TiDB Cloud).
+      # Formato: mysql://user:pass@host:port/dbname?ssl-mode=REQUIRED
+      - key: DATABASE_URL
+        sync: false
+
+      - key: JWT_SECRET
+        generateValue: true
+
+      - key: JWT_EXPIRES_IN
+        value: 24h
+
+      # Disk montado en /data (ver sección disk más abajo).
+      - key: UPLOAD_PATH
+        value: /data/uploads/solicitudes
+
+      - key: MAX_FILE_SIZE
+        value: "10485760"
+
+      # URL del frontend en Vercel. Separar con coma para múltiples orígenes:
+      # https://mi-app.vercel.app,http://localhost:5173
+      - key: CORS_ORIGIN
+        sync: false
+
+      - key: EMAIL_HOST
+        sync: false
+
+      - key: EMAIL_PORT
+        value: "587"
+
+      - key: EMAIL_SECURE
+        value: "false"
+
+      - key: EMAIL_USER
+        sync: false
+
+      - key: EMAIL_PASS
+        sync: false
+
+      - key: EMAIL_FROM
+        sync: false
+
+    # Disk persistente para archivos adjuntos.
+    # Requiere Plan Starter o superior.
+    # En Plan Free: eliminar este bloque y dejar UPLOAD_PATH vacío.
+    disk:
+      name: sist-uploads
+      mountPath: /data
+      sizeGB: 5
