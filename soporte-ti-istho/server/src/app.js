@@ -3,7 +3,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
 require('dotenv').config();
 
 const routes = require('./routes');
@@ -36,11 +35,6 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api', limiter);
-
-const uploadsBase = process.env.UPLOAD_PATH
-  ? path.resolve(process.env.UPLOAD_PATH, '..')
-  : path.join(__dirname, '..', 'uploads');
-app.use('/uploads', express.static(uploadsBase));
 
 app.use('/api', routes);
 

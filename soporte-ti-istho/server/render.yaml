@@ -1,11 +1,8 @@
 # render.yaml — Render Blueprint para SIST backend
 # Documentación: https://render.com/docs/blueprint-spec
 #
-# Requisitos:
-#   - Plan Starter ($7/mes) para usar Disk persistente (archivos adjuntos).
-#   - Plan Free: eliminar la sección `disk` y dejar UPLOAD_PATH vacío;
-#     los archivos se perderán en cada redeploy.
-#   - Base de datos MySQL externa (Aiven, TiDB Cloud, etc.) — ver README.
+# Almacenamiento de archivos adjuntos: Cloudinary (sin Disk requerido).
+# Base de datos MySQL externa: Aiven o TiDB Cloud.
 
 services:
   - type: web
@@ -15,7 +12,9 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
-    plan: starter
+    # Plan Free: se suspende tras 15 min de inactividad (cold start ~30s).
+    # Plan Starter ($7/mes): siempre activo, sin cold starts.
+    plan: free
     autoDeploy: true
 
     envVars:
@@ -24,8 +23,9 @@ services:
 
       # Render inyecta PORT automáticamente — no definir manualmente.
 
-      # DATABASE_URL lo provee el proveedor MySQL externo (Aiven / TiDB Cloud).
-      # Formato: mysql://user:pass@host:port/dbname?ssl-mode=REQUIRED
+      # DATABASE_URL lo provee el proveedor MySQL externo.
+      # Aiven:    mysql://avnadmin:<pass>@<host>.aivencloud.com:PORT/defaultdb?ssl-mode=REQUIRED
+      # TiDB:     mysql://user:<pass>@<host>:4000/dbname?ssl-mode=VERIFY_IDENTITY
       - key: DATABASE_URL
         sync: false
 
@@ -35,10 +35,6 @@ services:
       - key: JWT_EXPIRES_IN
         value: 24h
 
-      # Disk montado en /data (ver sección disk más abajo).
-      - key: UPLOAD_PATH
-        value: /data/uploads/solicitudes
-
       - key: MAX_FILE_SIZE
         value: "10485760"
 
@@ -47,6 +43,17 @@ services:
       - key: CORS_ORIGIN
         sync: false
 
+      # ── Cloudinary ──────────────────────────────────────────────────────────
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+
+      - key: CLOUDINARY_API_KEY
+        sync: false
+
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # ── Email ───────────────────────────────────────────────────────────────
       - key: EMAIL_HOST
         sync: false
 
@@ -64,11 +71,3 @@ services:
 
       - key: EMAIL_FROM
         sync: false
-
-    # Disk persistente para archivos adjuntos.
-    # Requiere Plan Starter o superior.
-    # En Plan Free: eliminar este bloque y dejar UPLOAD_PATH vacío.
-    disk:
-      name: sist-uploads
-      mountPath: /data
-      sizeGB: 5

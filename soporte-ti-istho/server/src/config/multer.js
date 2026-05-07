@@ -1,22 +1,16 @@
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { v4: uuidv4 } = require('uuid');
+const cloudinary = require('./cloudinary');
 
-const uploadDir = process.env.UPLOAD_PATH
-  ? path.resolve(process.env.UPLOAD_PATH)
-  : path.join(__dirname, '..', '..', 'uploads', 'solicitudes');
-
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
-  },
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => ({
+    folder: 'sist-solicitudes',
+    public_id: uuidv4(),
+    resource_type: 'auto',
+  }),
 });
 
 const ALLOWED_EXTS = new Set([

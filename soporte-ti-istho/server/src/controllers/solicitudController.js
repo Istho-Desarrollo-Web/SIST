@@ -68,7 +68,7 @@ async function obtener(req, res, next) {
 async function crear(req, res, next) {
   try {
     const { empleado_id, tipoSolicitud, prioridad, descripcion } = req.body;
-    const archivos = req.files ? req.files.map(f => ({ nombre: f.originalname, ruta: f.filename, size: f.size })) : [];
+    const archivos = req.files ? req.files.map(f => ({ nombre: f.originalname, ruta: f.path, public_id: f.filename, size: f.size })) : [];
 
     const fechas = calcularFechasSLA(new Date(), prioridad);
 
@@ -101,7 +101,7 @@ async function crearPublica(req, res, next) {
       return res.status(404).json({ success: false, message: 'No se encontró un empleado activo con esa identificación.' });
     }
 
-    const archivos = req.files ? req.files.map(f => ({ nombre: f.originalname, ruta: f.filename, size: f.size })) : [];
+    const archivos = req.files ? req.files.map(f => ({ nombre: f.originalname, ruta: f.path, public_id: f.filename, size: f.size })) : [];
     const fechas = calcularFechasSLA(new Date(), prioridad || 'media');
 
     const sol = await Solicitud.create({

@@ -1,12 +1,6 @@
 import { useState } from 'react';
 import { X, Download, FileText, ImageIcon, Film, Music, FileSpreadsheet, Eye } from 'lucide-react';
 
-const BASE = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') ?? '';
-
-function archivoUrl(ruta) {
-  return `${BASE}/uploads/solicitudes/${ruta}`;
-}
-
 function getKind(nombre) {
   const ext = (nombre || '').split('.').pop().toLowerCase();
   if (['jpg','jpeg','png','gif','webp'].includes(ext)) return 'image';
@@ -28,7 +22,7 @@ function getIcon(nombre) {
 }
 
 function PreviewPanel({ archivo, onClose }) {
-  const url = archivoUrl(archivo.ruta);
+  const url = archivo.ruta;
   const kind = getKind(archivo.nombre);
 
   return (
