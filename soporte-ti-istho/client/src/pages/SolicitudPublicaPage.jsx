@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { useState, useWatch } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Search, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Search, CheckCircle, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import api from '../services/api';
 import { TIPOS_SOLICITUD_LABEL, PRIORIDADES_LABEL } from '../utils/constants';
 import { FileUploadZone } from '../components/common/FileUploadZone';
 
+const DESCRIPCION_MAX = 1000;
+
 const schema = z.object({
   tipoSolicitud: z.string().min(1, 'Selecciona el tipo de solicitud'),
   prioridad: z.enum(['critica', 'alta', 'media', 'baja']),
-  descripcion: z.string().min(10, 'Describe el problema con al menos 10 caracteres'),
+  descripcion: z.string()
+    .min(10, 'Describe el problema con al menos 10 caracteres')
+    .max(DESCRIPCION_MAX, `Máximo ${DESCRIPCION_MAX} caracteres`),
 });
 
 export function SolicitudPublicaPage() {
@@ -21,24 +25,38 @@ export function SolicitudPublicaPage() {
   const [resultado, setResultado] = useState(null);
   const [archivos, setArchivos] = useState([]);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, reset, control, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { prioridad: 'media' },
   });
+  const descripcionValue = useWatch({ control, name: 'descripcion', defaultValue: '' });
 
   const buscarEmpleado = async () => {
-    if (!identificacion.trim()) return;
+    const id = identificacion.trim();
+    if (!id) { setErrorBusqueda('Ingresa tu número de identificación.'); return; }
+    if (!/^\d+$/.test(id)) { setErrorBusqueda('La identificación solo debe contener números.'); return; }
+    if (id.length < 5) { setErrorBusqueda('La identificación debe tener al menos 5 dígitos.'); return; }
+    if (id.length > 20) { setErrorBusqueda('La identificación no puede superar 20 dígitos.'); return; }
+
     setBuscando(true);
     setErrorBusqueda('');
     setEmpleado(null);
     try {
-      const res = await api.get('/empleados/buscar', { params: { identificacion: identificacion.trim() } });
+      const res = await api.get('/empleados/buscar', { params: { identificacion: id } });
       setEmpleado(res.data.data);
     } catch {
       setErrorBusqueda('No se encontró un empleado activo con ese número de identificación.');
     } finally {
       setBuscando(false);
     }
+  };
+
+  const cambiarEmpleado = () => {
+    setEmpleado(null);
+    setIdentificacion('');
+    setErrorBusqueda('');
+    reset();
+    setArchivos([]);
   };
 
   const onSubmit = async (data) => {
@@ -120,38 +138,56 @@ export function SolicitudPublicaPage() {
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
               Tu número de identificación <span className="text-red-500">*</span>
             </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={identificacion}
-                onChange={e => { setIdentificacion(e.target.value); setErrorBusqueda(''); setEmpleado(null); }}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), buscarEmpleado())}
-                placeholder="Ej: 1234567890"
-                className="flex-1 px-3 py-2.5 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-              />
-              <button
-                type="button"
-                onClick={buscarEmpleado}
-                disabled={buscando || !identificacion.trim()}
-                className="px-4 py-2.5 bg-navy-500 hover:bg-navy-600 disabled:opacity-50 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
-              >
-                {buscando ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
-                Buscar
-              </button>
-            </div>
 
-            {errorBusqueda && (
-              <div className="mt-2 flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
-                <AlertCircle size={14} />
-                {errorBusqueda}
+            {empleado ? (
+              <div className="flex items-center justify-between p-3 bg-cgreen-50 dark:bg-cgreen-900/20 rounded-lg border border-cgreen-200 dark:border-cgreen-800">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle size={16} className="text-cgreen-600 dark:text-cgreen-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-cgreen-800 dark:text-cgreen-300">{empleado.nombreCompleto}</p>
+                    <p className="text-xs text-cgreen-600 dark:text-cgreen-400">{empleado.area}{empleado.cargo ? ` — ${empleado.cargo}` : ''}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={cambiarEmpleado}
+                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-orange-500 dark:text-slate-400 dark:hover:text-orange-400 transition-colors"
+                >
+                  <RefreshCw size={12} />
+                  Cambiar
+                </button>
               </div>
-            )}
-
-            {empleado && (
-              <div className="mt-3 p-3 bg-cgreen-50 dark:bg-cgreen-900/20 rounded-lg border border-cgreen-200 dark:border-cgreen-800">
-                <p className="text-sm font-semibold text-cgreen-800 dark:text-cgreen-300">{empleado.nombreCompleto}</p>
-                <p className="text-xs text-cgreen-600 dark:text-cgreen-400">{empleado.area}{empleado.cargo ? ` — ${empleado.cargo}` : ''}</p>
-              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={identificacion}
+                    onChange={e => { setIdentificacion(e.target.value.replace(/\D/g, '')); setErrorBusqueda(''); }}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), buscarEmpleado())}
+                    placeholder="Ej: 1234567890"
+                    maxLength={20}
+                    inputMode="numeric"
+                    className={`flex-1 px-3 py-2.5 rounded-lg border text-sm bg-white dark:bg-navy-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-colors
+                      ${errorBusqueda ? 'border-red-400 dark:border-red-500' : 'border-slate-300 dark:border-navy-500'}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={buscarEmpleado}
+                    disabled={buscando || !identificacion.trim()}
+                    className="px-4 py-2.5 bg-navy-500 hover:bg-navy-600 disabled:opacity-50 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+                  >
+                    {buscando ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+                    Buscar
+                  </button>
+                </div>
+                {errorBusqueda && (
+                  <div className="mt-2 flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
+                    <AlertCircle size={14} />
+                    {errorBusqueda}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -187,14 +223,20 @@ export function SolicitudPublicaPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  Descripción del problema <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Descripción del problema <span className="text-red-500">*</span>
+                  </label>
+                  <span className={`text-xs ${(descripcionValue?.length ?? 0) > DESCRIPCION_MAX * 0.9 ? 'text-orange-500' : 'text-slate-400'}`}>
+                    {descripcionValue?.length ?? 0}/{DESCRIPCION_MAX}
+                  </span>
+                </div>
                 <textarea
                   {...register('descripcion')}
                   rows={4}
                   placeholder="Describe el problema con el mayor detalle posible: qué pasó, desde cuándo, qué equipo o sistema afecta..."
-                  className="px-3 py-2.5 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
+                  className={`px-3 py-2.5 rounded-lg border text-sm bg-white dark:bg-navy-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none transition-colors
+                    ${errors.descripcion ? 'border-red-400 dark:border-red-500' : 'border-slate-300 dark:border-navy-500'}`}
                 />
                 {errors.descripcion && <p className="text-xs text-red-500">{errors.descripcion.message}</p>}
               </div>
