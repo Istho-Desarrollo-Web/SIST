@@ -14,7 +14,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && !err.config.url.includes('/auth/login')) {
+    const PUBLIC_URLS = ['/auth/login', '/empleados/buscar', '/solicitudes/publica'];
+    const isPublic = PUBLIC_URLS.some(u => err.config.url.includes(u));
+    if (err.response?.status === 401 && !isPublic) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }

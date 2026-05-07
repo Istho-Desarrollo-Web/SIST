@@ -22,10 +22,12 @@ const bodyRules = [
   validate,
 ];
 
+// Ruta pública: empleados buscan su perfil sin token para llenar el formulario
+router.get('/buscar', c.buscar);
+
 router.use(auth);
 
 router.get('/', c.listar);
-router.get('/buscar', c.buscar);
 router.get('/plantilla', authorize('admin', 'tecnico'), c.descargarPlantilla);
 router.get('/:id', c.obtener);
 router.post('/', authorize('admin', 'tecnico'), bodyRules, c.crear);

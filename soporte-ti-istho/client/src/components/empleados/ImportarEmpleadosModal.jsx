@@ -41,8 +41,14 @@ export function ImportarEmpleadosModal({ open, onClose, onImportado }) {
       const res = await api.post('/empleados/importar', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setResultado(res.data.data);
-      if (res.data.data.creados > 0) onImportado();
+      const r = res.data.data;
+      setResultado(r);
+      if (r.creados > 0) {
+        toast.success(`${r.creados} empleado${r.creados !== 1 ? 's' : ''} importado${r.creados !== 1 ? 's' : ''} correctamente`);
+        onImportado();
+      } else {
+        toast.info('No se crearon empleados nuevos');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error al importar');
     } finally {
@@ -99,6 +105,7 @@ export function ImportarEmpleadosModal({ open, onClose, onImportado }) {
               ['Cargo', 'opcional'],
               ['Email', 'opcional'],
               ['Telefono', 'opcional'],
+              ['Activo', 'opcional'],
             ].map(([col, tipo]) => (
               <div key={col} className="flex items-center gap-1.5">
                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tipo === 'obligatorio' ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
