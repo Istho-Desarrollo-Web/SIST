@@ -42,9 +42,9 @@ export function DashboardPage() {
       </div>
 
       {/* Métricas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 sm:h-28" />)
         ) : (
           <>
             <MetricCard title="Total Tickets" value={resumen?.total} icon={Ticket} color="navy" />
@@ -56,12 +56,12 @@ export function DashboardPage() {
       </div>
 
       {/* Gráficos */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Tendencia 30 días */}
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           <h3 className="font-semibold text-navy-500 dark:text-white mb-4">Tickets últimos 30 días</h3>
           {loading ? <Skeleton className="h-48" /> : (
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={180}>
               <AreaChart data={tendencias?.porDia || []}>
                 <defs>
                   <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
@@ -70,8 +70,8 @@ export function DashboardPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-navy-600" />
-                <XAxis dataKey="fecha" tick={{ fontSize: 11 }} tickFormatter={v => v?.slice(5)} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <XAxis dataKey="fecha" tick={{ fontSize: 10 }} tickFormatter={v => v?.slice(5)} />
+                <YAxis tick={{ fontSize: 10 }} width={24} />
                 <Tooltip />
                 <Area type="monotone" dataKey="total" stroke="#E8531E" fill="url(#grad)" strokeWidth={2} name="Tickets" />
               </AreaChart>
@@ -80,12 +80,12 @@ export function DashboardPage() {
         </Card>
 
         {/* Por estado */}
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           <h3 className="font-semibold text-navy-500 dark:text-white mb-4">Distribución por estado</h3>
           {loading ? <Skeleton className="h-48" /> : (
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={180}>
               <PieChart>
-                <Pie data={tendencias?.porEstado || []} dataKey="total" nameKey="estado" cx="50%" cy="50%" outerRadius={70}>
+                <Pie data={tendencias?.porEstado || []} dataKey="total" nameKey="estado" cx="50%" cy="50%" outerRadius={60}>
                   {(tendencias?.porEstado || []).map((_, i) => (
                     <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                   ))}
@@ -98,43 +98,75 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {/* Tabla técnicos */}
-      <Card className="p-5">
+      {/* Técnicos */}
+      <Card className="p-4 sm:p-5">
         <h3 className="font-semibold text-navy-500 dark:text-white mb-4">Carga de trabajo por técnico</h3>
         {loading ? <Skeleton className="h-32" /> : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-navy-600">
-                  <th className="pb-2 pr-4">Técnico</th>
-                  <th className="pb-2 pr-4">Especialidad</th>
-                  <th className="pb-2 pr-4 text-center">Asignados</th>
-                  <th className="pb-2 pr-4 text-center">Resueltos</th>
-                  <th className="pb-2 text-center">Vencidos</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-navy-600">
-                {tecnicos.map(t => (
-                  <tr key={t.id}>
-                    <td className="py-2.5 pr-4 font-medium text-navy-500 dark:text-white">{t.nombre}</td>
-                    <td className="py-2.5 pr-4 text-slate-500 dark:text-slate-400">{t.especialidad || '-'}</td>
-                    <td className="py-2.5 pr-4 text-center">
-                      <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-xs font-bold">{t.asignados}</span>
-                    </td>
-                    <td className="py-2.5 pr-4 text-center">
-                      <span className="inline-flex items-center justify-center w-7 h-7 bg-cgreen-100 text-cgreen-700 dark:bg-cgreen-900/30 dark:text-cgreen-300 rounded-full text-xs font-bold">{t.resueltos}</span>
-                    </td>
-                    <td className="py-2.5 text-center">
-                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${t.vencidos > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-slate-100 text-slate-500 dark:bg-navy-700 dark:text-slate-400'}`}>{t.vencidos}</span>
-                    </td>
+          <>
+            {/* Tarjetas móvil */}
+            <div className="sm:hidden space-y-2">
+              {tecnicos.map(t => (
+                <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-navy-800 rounded-xl">
+                  <div className="min-w-0">
+                    <p className="font-medium text-navy-500 dark:text-white text-sm truncate">{t.nombre}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.especialidad || 'Sin especialidad'}</p>
+                  </div>
+                  <div className="flex gap-4 shrink-0 ml-3 text-center text-xs">
+                    <div>
+                      <p className="font-bold text-blue-600 dark:text-blue-400 text-base">{t.asignados}</p>
+                      <p className="text-slate-400">Asig.</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-cgreen-600 dark:text-cgreen-400 text-base">{t.resueltos}</p>
+                      <p className="text-slate-400">Res.</p>
+                    </div>
+                    <div>
+                      <p className={`font-bold text-base ${t.vencidos > 0 ? 'text-red-500' : 'text-slate-400 dark:text-slate-500'}`}>{t.vencidos}</p>
+                      <p className="text-slate-400">Venc.</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {tecnicos.length === 0 && (
+                <p className="py-4 text-center text-slate-400 text-sm">Sin técnicos registrados</p>
+              )}
+            </div>
+
+            {/* Tabla escritorio */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-navy-600">
+                    <th className="pb-2 pr-4">Técnico</th>
+                    <th className="pb-2 pr-4">Especialidad</th>
+                    <th className="pb-2 pr-4 text-center">Asignados</th>
+                    <th className="pb-2 pr-4 text-center">Resueltos</th>
+                    <th className="pb-2 text-center">Vencidos</th>
                   </tr>
-                ))}
-                {tecnicos.length === 0 && (
-                  <tr><td colSpan={5} className="py-4 text-center text-slate-400">Sin técnicos registrados</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-navy-600">
+                  {tecnicos.map(t => (
+                    <tr key={t.id}>
+                      <td className="py-2.5 pr-4 font-medium text-navy-500 dark:text-white">{t.nombre}</td>
+                      <td className="py-2.5 pr-4 text-slate-500 dark:text-slate-400">{t.especialidad || '-'}</td>
+                      <td className="py-2.5 pr-4 text-center">
+                        <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-xs font-bold">{t.asignados}</span>
+                      </td>
+                      <td className="py-2.5 pr-4 text-center">
+                        <span className="inline-flex items-center justify-center w-7 h-7 bg-cgreen-100 text-cgreen-700 dark:bg-cgreen-900/30 dark:text-cgreen-300 rounded-full text-xs font-bold">{t.resueltos}</span>
+                      </td>
+                      <td className="py-2.5 text-center">
+                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${t.vencidos > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-slate-100 text-slate-500 dark:bg-navy-700 dark:text-slate-400'}`}>{t.vencidos}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {tecnicos.length === 0 && (
+                    <tr><td colSpan={5} className="py-4 text-center text-slate-400">Sin técnicos registrados</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
     </div>
