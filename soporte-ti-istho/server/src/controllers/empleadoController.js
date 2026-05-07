@@ -17,7 +17,14 @@ const COL_ALIASES = {
   cargo:          ['cargo', 'puesto', 'posicion'],
   email:          ['email', 'correo', 'correoelectronico'],
   telefono:       ['telefono', 'phone', 'tel', 'celular'],
+  activo:         ['activo', 'estado', 'active', 'habilitado'],
 };
+
+function parsearActivo(val) {
+  const v = String(val ?? '').trim().toLowerCase();
+  if (['no', 'false', '0', 'inactivo', 'desactivado'].includes(v)) return false;
+  return true; // vacío o cualquier valor afirmativo → activo
+}
 
 function mapearColumnas(headerRow) {
   const map = {}; // field -> colIndex (1-based)
@@ -164,9 +171,10 @@ async function importar(req, res, next) {
           identificacion,
           nombreCompleto,
           area,
-          cargo:    val(colMap.cargo)   || null,
-          email:    val(colMap.email)   || null,
+          cargo:    val(colMap.cargo)    || null,
+          email:    val(colMap.email)    || null,
           telefono: val(colMap.telefono) || null,
+          activo:   colMap.activo ? parsearActivo(row.getCell(colMap.activo).value) : true,
         });
         await registrarAuditoria({
           tabla: 'empleados', registro_id: emp.id, operacion: 'INSERT',
@@ -201,11 +209,12 @@ async function descargarPlantilla(req, res, next) {
         { name: 'Cargo',          filterButton: true },
         { name: 'Email',          filterButton: true },
         { name: 'Telefono',       filterButton: true },
+        { name: 'Activo',         filterButton: true },
       ],
-      rows: [['12345678', 'Ejemplo Apellido', 'Sistemas', 'Analista', 'ejemplo@istho.com.co', '3001234567']],
+      rows: [['12345678', 'Ejemplo Apellido', 'Sistemas', 'Analista', 'ejemplo@istho.com.co', '3001234567', 'SI']],
     });
 
-    [20, 30, 20, 20, 28, 16].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+    [20, 30, 20, 20, 28, 16, 10].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
     const headerRow = ws.getRow(1);
     headerRow.height = 25;
