@@ -1,0 +1,9 @@
+# Memorias y configuración local de Claude Code
+.claude/
+
+# Archivos de prompt/diseño que no forman parte del código
+PROMPT_*.md
+
+# OS
+.DS_Store
+Thumbs.db

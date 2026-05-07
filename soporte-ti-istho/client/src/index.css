@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Centhrix Navy */
+  --color-navy-50: #E8E9EC;
+  --color-navy-100: #C5C8D0;
+  --color-navy-200: #9DA2B0;
+  --color-navy-300: #757C90;
+  --color-navy-400: #575F78;
+  --color-navy-500: #1B2340;
+  --color-navy-600: #171E38;
+  --color-navy-700: #121830;
+  --color-navy-800: #0E1328;
+  --color-navy-900: #080C1C;
+
+  /* Centhrix Orange */
+  --color-orange-50: #FEF0EB;
+  --color-orange-100: #FCD9CC;
+  --color-orange-200: #F9BFAB;
+  --color-orange-300: #F5A58A;
+  --color-orange-400: #F29172;
+  --color-orange-500: #E8531E;
+  --color-orange-600: #D14A1A;
+  --color-orange-700: #B84117;
+  --color-orange-800: #9F3813;
+  --color-orange-900: #6E270D;
+
+  /* Centhrix Green */
+  --color-cgreen-50: #EDF4E9;
+  --color-cgreen-100: #D2E4C8;
+  --color-cgreen-200: #B4D3A4;
+  --color-cgreen-300: #95C180;
+  --color-cgreen-400: #7EB465;
+  --color-cgreen-500: #4C8C2B;
+  --color-cgreen-600: #447D26;
+  --color-cgreen-700: #3B6D20;
+  --color-cgreen-800: #325D1B;
+  --color-cgreen-900: #234113;
+}
+
+/* Variables semánticas */
+:root {
+  --priority-critica: #7C3AED;
+  --priority-alta: #DC2626;
+  --priority-media: #F59E0B;
+  --priority-baja: #3B82F6;
+
+  --status-abierto: #3B82F6;
+  --status-en_proceso: #F59E0B;
+  --status-pendiente: #8B5CF6;
+  --status-resuelto: #4C8C2B;
+  --status-cerrado: #64748B;
+  --status-cancelado: #DC2626;
+}
+
+/* Transición suave al cambiar tema */
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color 280ms ease,
+    border-color 280ms ease,
+    color 200ms ease,
+    fill 200ms ease,
+    stroke 200ms ease !important;
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1B2340; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb { background: #575F78; }

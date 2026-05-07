@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.env.local
+uploads/solicitudes/*
+!uploads/solicitudes/.gitkeep
+*.log
+.DS_Store
