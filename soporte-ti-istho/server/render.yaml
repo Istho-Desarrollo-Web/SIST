@@ -10,7 +10,7 @@ services:
     runtime: node
     rootDir: soporte-ti-istho/server
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: npm run db:migrate && npm start
     healthCheckPath: /api/health
     # Plan Free: se suspende tras 15 min de inactividad (cold start ~30s).
     # Plan Starter ($7/mes): siempre activo, sin cold starts.
