@@ -9,5 +9,6 @@ router.get('/resumen', c.resumen);
 router.get('/tecnicos', c.porTecnico);
 router.get('/sla', c.metricasSLA);
 router.get('/tendencias', c.tendencias);
+router.get('/actividad', c.actividadReciente);
 
 module.exports = router;

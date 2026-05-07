@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Ticket, AlertTriangle, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { Ticket, AlertTriangle, Clock, TrendingUp, Activity, PlusCircle, RefreshCw } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -9,14 +9,18 @@ import { MetricCard } from '../components/dashboard/MetricCard';
 import { Card } from '../components/common/Card';
 import { Skeleton } from '../components/common/Skeleton';
 import { ESTADOS_LABEL } from '../utils/constants';
+import { formatRelativo } from '../utils/formatters';
 import { toast } from 'sonner';
 
 const CHART_COLORS = ['#3B82F6', '#F59E0B', '#8B5CF6', '#4C8C2B', '#64748B', '#DC2626'];
+const PRIORIDAD_LABEL = { critica: 'Crítica', alta: 'Alta', media: 'Media', baja: 'Baja' };
 
 export function DashboardPage() {
   const [resumen, setResumen] = useState(null);
   const [tecnicos, setTecnicos] = useState([]);
   const [tendencias, setTendencias] = useState(null);
+  const [slaMetrics, setSlaMetrics] = useState([]);
+  const [actividad, setActividad] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,11 +28,21 @@ export function DashboardPage() {
       dashboardService.resumen(),
       dashboardService.porTecnico(),
       dashboardService.tendencias(),
+      dashboardService.metricasSLA(),
+      dashboardService.actividadReciente(),
     ])
-      .then(([r, t, tr]) => {
+      .then(([r, t, tr, sla, act]) => {
         setResumen(r.data.data);
         setTecnicos(t.data.data);
         setTendencias(tr.data.data);
+        const raw = sla.data.data || [];
+        setSlaMetrics(raw.map(item => ({
+          prioridad: PRIORIDAD_LABEL[item.prioridad] || item.prioridad,
+          Cumplidos: item.cumplidos,
+          Vencidos: (item.total || 0) - (item.cumplidos || 0),
+          pct: item.total > 0 ? Math.round((item.cumplidos / item.total) * 100) : 100,
+        })));
+        setActividad(act.data.data || []);
       })
       .catch(() => toast.error('Error cargando dashboard'))
       .finally(() => setLoading(false));
@@ -97,6 +111,42 @@ export function DashboardPage() {
           )}
         </Card>
       </div>
+
+      {/* SLA por prioridad */}
+      <Card className="p-4 sm:p-5">
+        <h3 className="font-semibold text-navy-500 dark:text-white mb-1">Cumplimiento SLA por prioridad</h3>
+        <p className="text-xs text-slate-400 mb-4">Tickets resueltos dentro del límite vs. vencidos</p>
+        {loading ? <Skeleton className="h-44" /> : (
+          slaMetrics.length === 0 ? (
+            <p className="py-6 text-center text-slate-400 text-sm">Sin datos de SLA aún</p>
+          ) : (
+            <div className="space-y-4">
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={slaMetrics} barCategoryGap="30%">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-navy-600" />
+                  <XAxis dataKey="prioridad" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 10 }} width={24} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Cumplidos" fill="#4C8C2B" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Vencidos" fill="#DC2626" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {slaMetrics.map(item => (
+                  <div key={item.prioridad} className="bg-slate-50 dark:bg-navy-800 rounded-lg p-2.5 text-center">
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{item.prioridad}</p>
+                    <p className={`text-xl font-bold ${item.pct >= 80 ? 'text-cgreen-600 dark:text-cgreen-400' : item.pct >= 50 ? 'text-amber-500' : 'text-red-500'}`}>
+                      {item.pct}%
+                    </p>
+                    <p className="text-xs text-slate-400">{item.Cumplidos} / {item.Cumplidos + item.Vencidos}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        )}
+      </Card>
 
       {/* Técnicos */}
       <Card className="p-4 sm:p-5">
@@ -167,6 +217,48 @@ export function DashboardPage() {
               </table>
             </div>
           </>
+        )}
+      </Card>
+      {/* Actividad reciente */}
+      <Card className="p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Activity size={16} className="text-orange-500" />
+          <h3 className="font-semibold text-navy-500 dark:text-white">Actividad reciente</h3>
+        </div>
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
+          </div>
+        ) : actividad.length === 0 ? (
+          <p className="py-4 text-center text-slate-400 text-sm">Sin actividad registrada</p>
+        ) : (
+          <div className="space-y-0 divide-y divide-slate-100 dark:divide-navy-600">
+            {actividad.map(item => {
+              const esCreacion = item.operacion === 'INSERT';
+              const esCambioEstado = item.campo === 'estado';
+              return (
+                <div key={item.id} className="flex items-start gap-3 py-3">
+                  <div className={`mt-0.5 p-1.5 rounded-full shrink-0 ${esCreacion ? 'bg-cgreen-100 dark:bg-cgreen-900/30' : 'bg-orange-100 dark:bg-orange-900/30'}`}>
+                    {esCreacion
+                      ? <PlusCircle size={13} className="text-cgreen-600 dark:text-cgreen-400" />
+                      : <RefreshCw size={13} className="text-orange-500" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-snug">
+                      <span className="font-semibold text-navy-500 dark:text-white">{item.usuario}</span>
+                      {esCreacion
+                        ? <> creó el ticket <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span></>
+                        : esCambioEstado
+                          ? <> cambió estado de <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span> → <span className="font-semibold">{ESTADOS_LABEL[item.estadoNuevo] || item.estadoNuevo}</span></>
+                          : <> actualizó <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span></>}
+                      {item.empleado && <span className="text-slate-400"> ({item.empleado})</span>}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">{formatRelativo(item.fecha)}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </Card>
     </div>

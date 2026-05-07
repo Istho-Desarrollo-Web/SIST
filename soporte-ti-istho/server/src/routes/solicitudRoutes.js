@@ -34,6 +34,13 @@ router.patch('/bulk', authorize('admin', 'tecnico'), [
   body('ids.*').isInt({ min: 1 }),
   body('accion').isIn(['cambiar_estado', 'asignar_tecnico']).withMessage('Acción no válida'),
   body('valor').notEmpty().withMessage('valor es requerido'),
+  body('valor').custom((valor, { req }) => {
+    if (req.body.accion === 'asignar_tecnico') {
+      const n = Number(valor);
+      if (!Number.isInteger(n) || n < 1) throw new Error('El técnico debe ser un ID numérico válido');
+    }
+    return true;
+  }),
   validate,
 ], c.bulkAction);
 

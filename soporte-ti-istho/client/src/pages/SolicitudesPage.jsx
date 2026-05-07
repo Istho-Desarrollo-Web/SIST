@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Search, RefreshCw, CheckSquare, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { solicitudService } from '../services/solicitudService';
@@ -35,7 +35,12 @@ export function SolicitudesPage() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkEstado, setBulkEstado] = useState('');
   const [bulkTecnico, setBulkTecnico] = useState('');
-  const [bulkLoading, setBulkLoading] = useState(false);
+  const [loadingEstado, setLoadingEstado] = useState(false);
+  const [loadingTecnico, setLoadingTecnico] = useState(false);
+
+  // Checkbox indeterminate en header (desktop y móvil)
+  const checkboxHeaderDesktopRef = useRef(null);
+  const checkboxHeaderMobileRef = useRef(null);
 
   const cargar = useCallback(async (page = 1) => {
     setLoading(true);
@@ -72,6 +77,12 @@ export function SolicitudesPage() {
   const todosSeleccionados = solicitudes.length > 0 && solicitudes.every(s => selectedIds.has(s.id));
   const algunoSeleccionado = selectedIds.size > 0 && !todosSeleccionados;
 
+  useEffect(() => {
+    [checkboxHeaderDesktopRef, checkboxHeaderMobileRef].forEach(ref => {
+      if (ref.current) ref.current.indeterminate = algunoSeleccionado;
+    });
+  }, [algunoSeleccionado]);
+
   const toggleTodos = () => {
     if (todosSeleccionados) {
       setSelectedIds(new Set());
@@ -84,7 +95,8 @@ export function SolicitudesPage() {
   const ejecutarBulk = async (accion) => {
     const valor = accion === 'cambiar_estado' ? bulkEstado : bulkTecnico;
     if (!valor) { toast.error(accion === 'cambiar_estado' ? 'Selecciona un estado' : 'Selecciona un técnico'); return; }
-    setBulkLoading(true);
+    const setLoading = accion === 'cambiar_estado' ? setLoadingEstado : setLoadingTecnico;
+    setLoading(true);
     try {
       const res = await solicitudService.bulkAction({ ids: Array.from(selectedIds), accion, valor });
       toast.success(res.data.message);
@@ -94,7 +106,7 @@ export function SolicitudesPage() {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error al aplicar la acción');
     } finally {
-      setBulkLoading(false);
+      setLoading(false);
     }
   };
 
@@ -120,7 +132,7 @@ export function SolicitudesPage() {
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar por número..."
+              placeholder="Buscar por número o empleado..."
               value={filters.search}
               onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
               className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
@@ -165,7 +177,7 @@ export function SolicitudesPage() {
                   <input
                     type="checkbox"
                     checked={todosSeleccionados}
-                    ref={el => { if (el) el.indeterminate = algunoSeleccionado; }}
+                    ref={checkboxHeaderMobileRef}
                     onChange={toggleTodos}
                     className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
                   />
@@ -175,7 +187,7 @@ export function SolicitudesPage() {
               {solicitudes.map(s => (
                 <div
                   key={s.id}
-                  className="p-4 active:bg-slate-50 dark:active:bg-navy-700/50"
+                  className={`p-4 active:bg-slate-50 dark:active:bg-navy-700/50 transition-colors ${selectedIds.has(s.id) ? 'bg-orange-50 dark:bg-orange-900/10' : ''}`}
                 >
                   <div className="flex items-start gap-3">
                     {canBulk && (
@@ -219,7 +231,7 @@ export function SolicitudesPage() {
                         <input
                           type="checkbox"
                           checked={todosSeleccionados}
-                          ref={el => { if (el) el.indeterminate = algunoSeleccionado; }}
+                          ref={checkboxHeaderDesktopRef}
                           onChange={toggleTodos}
                           className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
                         />
@@ -308,9 +320,10 @@ export function SolicitudesPage() {
                 </select>
                 <button
                   onClick={() => ejecutarBulk('cambiar_estado')}
-                  disabled={bulkLoading || !bulkEstado}
-                  className="shrink-0 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-sm font-medium transition-colors"
+                  disabled={loadingEstado || loadingTecnico || !bulkEstado}
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-sm font-medium transition-colors flex items-center gap-1.5"
                 >
+                  {loadingEstado && <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
                   Aplicar
                 </button>
               </div>
@@ -330,9 +343,10 @@ export function SolicitudesPage() {
                   </select>
                   <button
                     onClick={() => ejecutarBulk('asignar_tecnico')}
-                    disabled={bulkLoading || !bulkTecnico}
-                    className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-sm font-medium transition-colors"
+                    disabled={loadingTecnico || loadingEstado || !bulkTecnico}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-sm font-medium transition-colors flex items-center gap-1.5"
                   >
+                    {loadingTecnico && <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
                     Asignar
                   </button>
                 </div>

@@ -1,6 +1,6 @@
 const { Auditoria } = require('../models');
 
-async function registrarAuditoria({ tabla, registro_id, operacion, datos_anteriores, datos_nuevos, campo_modificado, usuario_id, ip_address, user_agent }) {
+async function registrarAuditoria({ tabla, registro_id, operacion, datos_anteriores, datos_nuevos, campo_modificado, usuario_id, ip_address, user_agent, transaction = null }) {
   try {
     await Auditoria.create({
       tabla, registro_id, operacion,
@@ -10,8 +10,9 @@ async function registrarAuditoria({ tabla, registro_id, operacion, datos_anterio
       usuario_id: usuario_id || null,
       ip_address: ip_address || null,
       user_agent: user_agent || null,
-    });
+    }, transaction ? { transaction } : {});
   } catch (err) {
+    if (transaction) throw err; // propaga para que el TX haga rollback
     console.error('Error registrando auditoría:', err.message);
   }
 }

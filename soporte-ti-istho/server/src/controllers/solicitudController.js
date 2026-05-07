@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
-const { Solicitud, Empleado, Usuario } = require('../models');
+const { sequelize, Solicitud, Empleado, Usuario } = require('../models');
 const { calcularFechasSLA, calcularPorcentajeSLA } = require('../services/slaService');
 const { registrarAuditoria } = require('../services/auditoriaService');
 const { notificarNuevaSolicitud, notificarConfirmacionEmpleado, notificarCambioEstado } = require('../services/emailService');
@@ -19,19 +19,27 @@ async function listar(req, res, next) {
   try {
     const { page = 1, limit = 10, estado, prioridad, tecnico, search } = req.query;
     const where = {};
+    const andConditions = [];
 
     // Técnico solo ve sus tickets + sin asignar
     if (req.user.rol === ROLES.TECNICO) {
-      where[Op.or] = [
-        { tecnicoAsignado: req.user.id },
-        { tecnicoAsignado: null },
-      ];
+      andConditions.push({
+        [Op.or]: [{ tecnicoAsignado: req.user.id }, { tecnicoAsignado: null }],
+      });
     }
 
     if (estado) where.estado = estado;
     if (prioridad) where.prioridad = prioridad;
     if (tecnico) where.tecnicoAsignado = tecnico;
-    if (search) where.numero = { [Op.like]: `%${search}%` };
+    if (search) {
+      andConditions.push({
+        [Op.or]: [
+          { numero: { [Op.like]: `%${search}%` } },
+          { '$empleado.nombreCompleto$': { [Op.like]: `%${search}%` } },
+        ],
+      });
+    }
+    if (andConditions.length) where[Op.and] = andConditions;
 
     const { count, rows } = await Solicitud.findAndCountAll({
       where,
@@ -42,6 +50,7 @@ async function listar(req, res, next) {
       limit: parseInt(limit),
       offset: (parseInt(page) - 1) * parseInt(limit),
       order: [['fechaCreacion', 'DESC']],
+      subQuery: false,
     });
 
     res.json({
@@ -243,7 +252,6 @@ async function calificar(req, res, next) {
 }
 
 async function bulkAction(req, res, next) {
-  const { sequelize } = require('../models');
   try {
     const { ids, accion, valor } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
@@ -267,6 +275,19 @@ async function bulkAction(req, res, next) {
       return res.status(403).json({ success: false, message: 'Solo los administradores pueden asignar técnicos en lote' });
     }
 
+    // Validar que el técnico existe antes de iniciar la transacción
+    let tecnicoId;
+    if (accion === 'asignar_tecnico') {
+      tecnicoId = parseInt(valor, 10);
+      if (!Number.isInteger(tecnicoId) || tecnicoId < 1) {
+        return res.status(400).json({ success: false, message: 'ID de técnico inválido' });
+      }
+      const tecnico = await Usuario.findOne({ where: { id: tecnicoId, rol: ROLES.TECNICO, activo: true } });
+      if (!tecnico) {
+        return res.status(404).json({ success: false, message: 'Técnico no encontrado o inactivo' });
+      }
+    }
+
     // Cargar solicitudes — técnico solo puede operar sobre las suyas o sin asignar
     const where = { id: { [Op.in]: ids } };
     if (req.user.rol === ROLES.TECNICO) {
@@ -280,6 +301,7 @@ async function bulkAction(req, res, next) {
 
     const ahora = new Date();
     let actualizadas = 0;
+    const paraNotificar = []; // { sol, empleado, estadoAnterior, estadoNuevo }
 
     await sequelize.transaction(async (t) => {
       for (const sol of solicitudes) {
@@ -297,22 +319,40 @@ async function bulkAction(req, res, next) {
             updates.porcentajeSLA = calcularPorcentajeSLA(sol.fechaCreacion, sol.fechaLimiteResolucion, ahora);
           }
         } else if (accion === 'asignar_tecnico') {
-          updates.tecnicoAsignado = parseInt(valor, 10);
+          updates.tecnicoAsignado = tecnicoId;
           if (sol.estado === 'abierto') updates.estado = 'en_proceso';
         }
 
+        const estadoAnterior = anterior.estado;
         await sol.update(updates, { transaction: t });
 
         await registrarAuditoria({
           tabla: 'solicitudes', registro_id: sol.id, operacion: 'UPDATE',
           datos_anteriores: anterior, datos_nuevos: sol.toJSON(),
-          campo_modificado: accion === 'cambiar_estado' ? 'estado' : accion,
+          campo_modificado: accion === 'cambiar_estado' ? 'estado' : 'tecnicoAsignado',
           usuario_id: req.user.id, ip_address: req.ip, user_agent: req.headers['user-agent'],
+          transaction: t,
         });
+
+        if (accion === 'cambiar_estado' && sol.empleado_id) {
+          paraNotificar.push({ sol, estadoAnterior, estadoNuevo: valor });
+        }
 
         actualizadas++;
       }
     });
+
+    // Notificaciones en background — fuera del TX para no bloquear ni revertir
+    if (paraNotificar.length > 0) {
+      const empleadosIds = [...new Set(paraNotificar.map(n => n.sol.empleado_id))];
+      const empleados = await Empleado.findAll({ where: { id: { [Op.in]: empleadosIds } } });
+      const empleadoMap = Object.fromEntries(empleados.map(e => [e.id, e]));
+
+      for (const { sol, estadoAnterior, estadoNuevo } of paraNotificar) {
+        const emp = empleadoMap[sol.empleado_id];
+        if (emp) notificarCambioEstado(sol, emp, estadoAnterior, estadoNuevo, null).catch(() => {});
+      }
+    }
 
     res.json({
       success: true,

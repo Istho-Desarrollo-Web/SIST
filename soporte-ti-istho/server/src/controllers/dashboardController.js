@@ -1,5 +1,5 @@
 const { Op, fn, col, literal } = require('sequelize');
-const { Solicitud, Usuario, sequelize } = require('../models');
+const { Solicitud, Usuario, Empleado, Auditoria, sequelize } = require('../models');
 const { calcularPorcentajeSLA } = require('../services/slaService');
 
 async function resumen(req, res, next) {
@@ -103,4 +103,42 @@ async function tendencias(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { resumen, porTecnico, metricasSLA, tendencias };
+async function actividadReciente(req, res, next) {
+  try {
+    const registros = await Auditoria.findAll({
+      where: { tabla: 'solicitudes' },
+      include: [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre'], required: false }],
+      order: [['createdAt', 'DESC']],
+      limit: 15,
+    });
+
+    const ids = [...new Set(registros.map(r => r.registro_id))];
+    const solicitudes = ids.length > 0
+      ? await Solicitud.findAll({
+          where: { id: { [Op.in]: ids } },
+          attributes: ['id', 'numero'],
+          include: [{ model: Empleado, as: 'empleado', attributes: ['nombreCompleto'] }],
+        })
+      : [];
+    const solMap = Object.fromEntries(solicitudes.map(s => [s.id, s]));
+
+    const data = registros.map(r => {
+      const sol = solMap[r.registro_id];
+      return {
+        id: r.id,
+        operacion: r.operacion,
+        campo: r.campo_modificado,
+        estadoNuevo: r.datos_nuevos?.estado || null,
+        estadoAnterior: r.datos_anteriores?.estado || null,
+        usuario: r.usuario?.nombre || 'Sistema',
+        solicitudNumero: sol?.numero || `#${r.registro_id}`,
+        empleado: sol?.empleado?.nombreCompleto || null,
+        fecha: r.createdAt,
+      };
+    });
+
+    res.json({ success: true, data });
+  } catch (err) { next(err); }
+}
+
+module.exports = { resumen, porTecnico, metricasSLA, tendencias, actividadReciente };
