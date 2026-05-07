@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Ticket, Users, UserCog, LogOut, Menu, X, ChevronDown, BarChart2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
+import { LogoSIST } from '../common/LogoSIST';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'tecnico'] },
@@ -30,14 +31,8 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <NavLink to="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">IT</span>
-            </div>
-            <div className="hidden sm:block">
-              <p className="text-white font-bold text-sm leading-none">Soporte TI</p>
-              <p className="text-navy-200 text-xs leading-none">ISTHO S.A.S.</p>
-            </div>
+          <NavLink to="/">
+            <LogoSIST size={34} textClass="hidden sm:block" />
           </NavLink>
 
           {/* Desktop nav */}

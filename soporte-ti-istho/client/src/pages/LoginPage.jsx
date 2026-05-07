@@ -8,6 +8,7 @@ import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
+import { LogoIcon } from '../components/common/LogoSIST';
 
 const schema = z.object({
   email: z.string().email('Email inválido'),
@@ -38,8 +39,8 @@ export function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-500 rounded-2xl mb-4 shadow-lg">
-            <span className="text-white font-bold text-2xl">IT</span>
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-orange-500 rounded-2xl mb-4 shadow-xl shadow-orange-900/40">
+            <LogoIcon size={44} />
           </div>
           <h1 className="text-2xl font-bold text-white">Soporte TI</h1>
           <p className="text-navy-200 text-sm mt-1">ISTHO S.A.S. — Centro Logístico Industrial del Norte</p>
