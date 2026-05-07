@@ -83,7 +83,7 @@ export function SolicitudPublicaPage() {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-navy-900 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
-          <div className="bg-white dark:bg-navy-800 rounded-2xl shadow-lg p-8 text-center space-y-4">
+          <div className="bg-white dark:bg-navy-800 rounded-2xl shadow-lg p-5 sm:p-8 text-center space-y-4">
             <div className="w-16 h-16 bg-cgreen-100 dark:bg-cgreen-900/30 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle size={32} className="text-cgreen-500" />
             </div>
@@ -92,16 +92,16 @@ export function SolicitudPublicaPage() {
               Tu solicitud fue recibida. El equipo de TI la atenderá a la brevedad.
             </p>
             <div className="bg-slate-50 dark:bg-navy-700 rounded-xl p-4 text-left space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500 dark:text-slate-400">Número de ticket</span>
+              <div className="flex justify-between gap-3 text-sm">
+                <span className="text-slate-500 dark:text-slate-400 shrink-0">Número de ticket</span>
                 <span className="font-mono font-bold text-orange-500">{resultado.numero}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500 dark:text-slate-400">Empleado</span>
-                <span className="font-medium text-slate-700 dark:text-slate-200">{resultado.empleado?.nombreCompleto}</span>
+              <div className="flex justify-between gap-3 text-sm min-w-0">
+                <span className="text-slate-500 dark:text-slate-400 shrink-0">Empleado</span>
+                <span className="font-medium text-slate-700 dark:text-slate-200 text-right truncate">{resultado.empleado?.nombreCompleto}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500 dark:text-slate-400">Prioridad</span>
+              <div className="flex justify-between gap-3 text-sm">
+                <span className="text-slate-500 dark:text-slate-400 shrink-0">Prioridad</span>
                 <span className="font-medium text-slate-700 dark:text-slate-200 capitalize">{resultado.prioridad}</span>
               </div>
             </div>
@@ -121,7 +121,7 @@ export function SolicitudPublicaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-navy-900 flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-slate-50 dark:bg-navy-900 flex items-center justify-center px-4 py-10 overflow-x-hidden">
       <div className="w-full max-w-lg space-y-6">
         {/* Header */}
         <div className="text-center">
@@ -132,7 +132,7 @@ export function SolicitudPublicaPage() {
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">ISTHO S.A.S. — Ingresa tu identificación y describe tu problema</p>
         </div>
 
-        <div className="bg-white dark:bg-navy-800 rounded-2xl shadow-sm border border-slate-200 dark:border-navy-700 p-6 space-y-5">
+        <div className="bg-white dark:bg-navy-800 rounded-2xl shadow-sm border border-slate-200 dark:border-navy-700 p-4 sm:p-6 space-y-5 overflow-hidden">
           {/* Paso 1: identificación */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">

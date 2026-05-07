@@ -62,7 +62,10 @@ export function FileUploadZone({ files, onChange }) {
           {full ? 'Límite de archivos alcanzado' : 'Clic o arrastra archivos aquí'}
         </p>
         <p className="text-xs text-slate-400 mt-0.5">
-          Máx. {MAX_FILES} archivos · 10 MB c/u · Word, Excel, PPT, PDF, Imagen, Video, Audio
+          Máx. {MAX_FILES} archivos · 10 MB c/u
+        </p>
+        <p className="text-xs text-slate-400">
+          Word, Excel, PPT, PDF, Imagen, Video, Audio
         </p>
       </div>
 

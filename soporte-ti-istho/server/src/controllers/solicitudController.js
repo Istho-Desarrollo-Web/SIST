@@ -242,6 +242,86 @@ async function calificar(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function bulkAction(req, res, next) {
+  const { sequelize } = require('../models');
+  try {
+    const { ids, accion, valor } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'Debes seleccionar al menos una solicitud' });
+    }
+    if (ids.length > 50) {
+      return res.status(400).json({ success: false, message: 'Máximo 50 solicitudes por operación' });
+    }
+
+    const ACCIONES_VALIDAS = ['cambiar_estado', 'asignar_tecnico'];
+    if (!ACCIONES_VALIDAS.includes(accion)) {
+      return res.status(400).json({ success: false, message: 'Acción no válida' });
+    }
+
+    const ESTADOS_VALIDOS = ['abierto', 'en_proceso', 'pendiente_usuario', 'pendiente_externo', 'resuelto', 'cerrado', 'cancelado'];
+    if (accion === 'cambiar_estado' && !ESTADOS_VALIDOS.includes(valor)) {
+      return res.status(400).json({ success: false, message: 'Estado no válido' });
+    }
+
+    if (accion === 'asignar_tecnico' && req.user.rol !== ROLES.ADMIN) {
+      return res.status(403).json({ success: false, message: 'Solo los administradores pueden asignar técnicos en lote' });
+    }
+
+    // Cargar solicitudes — técnico solo puede operar sobre las suyas o sin asignar
+    const where = { id: { [Op.in]: ids } };
+    if (req.user.rol === ROLES.TECNICO) {
+      where[Op.or] = [{ tecnicoAsignado: req.user.id }, { tecnicoAsignado: null }];
+    }
+
+    const solicitudes = await Solicitud.findAll({ where });
+    if (solicitudes.length === 0) {
+      return res.status(404).json({ success: false, message: 'No se encontraron solicitudes accesibles' });
+    }
+
+    const ahora = new Date();
+    let actualizadas = 0;
+
+    await sequelize.transaction(async (t) => {
+      for (const sol of solicitudes) {
+        const anterior = sol.toJSON();
+        const updates = {};
+
+        if (accion === 'cambiar_estado') {
+          updates.estado = valor;
+          if (valor === 'en_proceso' && !sol.fechaPrimeraRespuesta) {
+            updates.fechaPrimeraRespuesta = ahora;
+          }
+          if (valor === 'resuelto' || valor === 'cerrado') {
+            updates.fechaResolucion = ahora;
+            updates.tiempoResolucionMinutos = Math.round((ahora - new Date(sol.fechaCreacion)) / 60000);
+            updates.porcentajeSLA = calcularPorcentajeSLA(sol.fechaCreacion, sol.fechaLimiteResolucion, ahora);
+          }
+        } else if (accion === 'asignar_tecnico') {
+          updates.tecnicoAsignado = parseInt(valor, 10);
+          if (sol.estado === 'abierto') updates.estado = 'en_proceso';
+        }
+
+        await sol.update(updates, { transaction: t });
+
+        await registrarAuditoria({
+          tabla: 'solicitudes', registro_id: sol.id, operacion: 'UPDATE',
+          datos_anteriores: anterior, datos_nuevos: sol.toJSON(),
+          campo_modificado: accion === 'cambiar_estado' ? 'estado' : accion,
+          usuario_id: req.user.id, ip_address: req.ip, user_agent: req.headers['user-agent'],
+        });
+
+        actualizadas++;
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `${actualizadas} solicitud${actualizadas !== 1 ? 'es' : ''} actualizada${actualizadas !== 1 ? 's' : ''}`,
+      data: { actualizadas, total: ids.length },
+    });
+  } catch (err) { next(err); }
+}
+
 async function misTickets(req, res, next) {
   try {
     const solicitudes = await Solicitud.findAll({
@@ -253,4 +333,4 @@ async function misTickets(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { listar, obtener, crear, crearPublica, actualizar, cambiarEstado, asignarTecnico, agregarComentario, calificar, misTickets };
+module.exports = { listar, obtener, crear, crearPublica, actualizar, cambiarEstado, asignarTecnico, agregarComentario, calificar, misTickets, bulkAction };

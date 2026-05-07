@@ -29,6 +29,14 @@ router.post('/', upload.array('archivos', 3), [
   validate,
 ], c.crear);
 
+router.patch('/bulk', authorize('admin', 'tecnico'), [
+  body('ids').isArray({ min: 1, max: 50 }).withMessage('ids debe ser un array de 1 a 50 elementos'),
+  body('ids.*').isInt({ min: 1 }),
+  body('accion').isIn(['cambiar_estado', 'asignar_tecnico']).withMessage('Acción no válida'),
+  body('valor').notEmpty().withMessage('valor es requerido'),
+  validate,
+], c.bulkAction);
+
 router.put('/:id', authorize('admin', 'tecnico'), c.actualizar);
 router.put('/:id/estado', authorize('admin', 'tecnico'), [
   body('estado').isIn(['abierto', 'en_proceso', 'pendiente_usuario', 'pendiente_externo', 'resuelto', 'cerrado', 'cancelado']),

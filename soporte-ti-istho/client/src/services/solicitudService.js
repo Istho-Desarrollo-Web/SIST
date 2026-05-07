@@ -10,4 +10,5 @@ export const solicitudService = {
   agregarComentario: (id, texto) => api.post(`/solicitudes/${id}/comentario`, { texto }),
   calificar: (id, data) => api.put(`/solicitudes/${id}/calificar`, data),
   misTickets: () => api.get('/solicitudes/mis-tickets'),
+  bulkAction: (data) => api.patch('/solicitudes/bulk', data),
 };

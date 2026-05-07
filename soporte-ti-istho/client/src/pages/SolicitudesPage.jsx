@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw, CheckSquare, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { solicitudService } from '../services/solicitudService';
 import { usuarioService } from '../services/usuarioService';
@@ -16,6 +16,11 @@ import { formatFecha } from '../utils/formatters';
 import { ESTADOS_LABEL, PRIORIDADES_LABEL } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 
+const ESTADOS_BULK = [
+  'abierto', 'en_proceso', 'pendiente_usuario',
+  'pendiente_externo', 'resuelto', 'cerrado', 'cancelado',
+];
+
 export function SolicitudesPage() {
   const { user } = useAuth();
   const [solicitudes, setSolicitudes] = useState([]);
@@ -26,8 +31,15 @@ export function SolicitudesPage() {
   const [showForm, setShowForm] = useState(false);
   const [tecnicos, setTecnicos] = useState([]);
 
+  // Selección masiva
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkEstado, setBulkEstado] = useState('');
+  const [bulkTecnico, setBulkTecnico] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+
   const cargar = useCallback(async (page = 1) => {
     setLoading(true);
+    setSelectedIds(new Set());
     try {
       const params = { page, limit: 10, ...filters };
       const res = await solicitudService.listar(params);
@@ -47,6 +59,46 @@ export function SolicitudesPage() {
       usuarioService.listarTecnicos().then(r => setTecnicos(r.data.data));
     }
   }, [user.rol]);
+
+  // --- Selección ---
+  const toggleId = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const todosSeleccionados = solicitudes.length > 0 && solicitudes.every(s => selectedIds.has(s.id));
+  const algunoSeleccionado = selectedIds.size > 0 && !todosSeleccionados;
+
+  const toggleTodos = () => {
+    if (todosSeleccionados) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(solicitudes.map(s => s.id)));
+    }
+  };
+
+  // --- Acción masiva ---
+  const ejecutarBulk = async (accion) => {
+    const valor = accion === 'cambiar_estado' ? bulkEstado : bulkTecnico;
+    if (!valor) { toast.error(accion === 'cambiar_estado' ? 'Selecciona un estado' : 'Selecciona un técnico'); return; }
+    setBulkLoading(true);
+    try {
+      const res = await solicitudService.bulkAction({ ids: Array.from(selectedIds), accion, valor });
+      toast.success(res.data.message);
+      setBulkEstado('');
+      setBulkTecnico('');
+      cargar(pagination.page);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error al aplicar la acción');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const canBulk = user.rol !== 'usuario';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
@@ -108,26 +160,50 @@ export function SolicitudesPage() {
           <>
             {/* Tarjetas móvil */}
             <div className="sm:hidden divide-y divide-slate-100 dark:divide-navy-600">
+              {canBulk && (
+                <div className="px-4 py-2 flex items-center gap-2 bg-slate-50 dark:bg-navy-800">
+                  <input
+                    type="checkbox"
+                    checked={todosSeleccionados}
+                    ref={el => { if (el) el.indeterminate = algunoSeleccionado; }}
+                    onChange={toggleTodos}
+                    className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
+                  />
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Seleccionar página</span>
+                </div>
+              )}
               {solicitudes.map(s => (
                 <div
                   key={s.id}
-                  onClick={() => setSelected(s)}
-                  className="p-4 active:bg-slate-50 dark:active:bg-navy-700/50 cursor-pointer"
+                  className="p-4 active:bg-slate-50 dark:active:bg-navy-700/50"
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="font-mono text-xs font-semibold text-orange-600 dark:text-orange-400 leading-tight">{s.numero}</span>
-                    <PrioridadBadge prioridad={s.prioridad} />
-                  </div>
-                  <p className="text-sm font-medium text-navy-500 dark:text-white truncate mb-0.5">
-                    {s.empleado?.nombreCompleto || '-'}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 capitalize">
-                    {s.tipoSolicitud?.replace(/_/g, ' ')}
-                  </p>
-                  <div className="flex items-center justify-between gap-2">
-                    <EstadoBadge estado={s.estado} />
-                    <SLAIndicator porcentaje={s.porcentajeSLA} />
-                    <span className="text-xs text-slate-400 whitespace-nowrap">{formatFecha(s.fechaCreacion)}</span>
+                  <div className="flex items-start gap-3">
+                    {canBulk && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(s.id)}
+                        onChange={() => toggleId(s.id)}
+                        onClick={e => e.stopPropagation()}
+                        className="mt-0.5 w-4 h-4 rounded accent-orange-500 cursor-pointer shrink-0"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelected(s)}>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className="font-mono text-xs font-semibold text-orange-600 dark:text-orange-400 leading-tight">{s.numero}</span>
+                        <PrioridadBadge prioridad={s.prioridad} />
+                      </div>
+                      <p className="text-sm font-medium text-navy-500 dark:text-white truncate mb-0.5">
+                        {s.empleado?.nombreCompleto || '-'}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 capitalize">
+                        {s.tipoSolicitud?.replace(/_/g, ' ')}
+                      </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <EstadoBadge estado={s.estado} />
+                        <SLAIndicator porcentaje={s.porcentajeSLA} />
+                        <span className="text-xs text-slate-400 whitespace-nowrap">{formatFecha(s.fechaCreacion)}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -138,6 +214,17 @@ export function SolicitudesPage() {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-navy-800">
                   <tr className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                    {canBulk && (
+                      <th className="px-4 py-3 w-10">
+                        <input
+                          type="checkbox"
+                          checked={todosSeleccionados}
+                          ref={el => { if (el) el.indeterminate = algunoSeleccionado; }}
+                          onChange={toggleTodos}
+                          className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
+                        />
+                      </th>
+                    )}
                     <th className="text-left px-4 py-3">Número</th>
                     <th className="text-left px-4 py-3">Tipo</th>
                     <th className="text-left px-4 py-3">Empleado</th>
@@ -152,17 +239,30 @@ export function SolicitudesPage() {
                   {solicitudes.map(s => (
                     <tr
                       key={s.id}
-                      onClick={() => setSelected(s)}
-                      className="hover:bg-slate-50 dark:hover:bg-navy-700/50 cursor-pointer transition-colors"
+                      className={`hover:bg-slate-50 dark:hover:bg-navy-700/50 transition-colors ${selectedIds.has(s.id) ? 'bg-orange-50 dark:bg-orange-900/10' : ''}`}
                     >
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-orange-600 dark:text-orange-400">{s.numero}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 max-w-32 truncate">{s.tipoSolicitud?.replace(/_/g, ' ')}</td>
-                      <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{s.empleado?.nombreCompleto || '-'}</td>
-                      <td className="px-4 py-3"><PrioridadBadge prioridad={s.prioridad} /></td>
-                      <td className="px-4 py-3"><EstadoBadge estado={s.estado} /></td>
-                      <td className="px-4 py-3"><SLAIndicator porcentaje={s.porcentajeSLA} /></td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{s.tecnico?.nombre || <span className="text-slate-400 italic">Sin asignar</span>}</td>
-                      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{formatFecha(s.fechaCreacion)}</td>
+                      {canBulk && (
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(s.id)}
+                            onChange={() => toggleId(s.id)}
+                            onClick={e => e.stopPropagation()}
+                            className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
+                          />
+                        </td>
+                      )}
+                      <td
+                        className="px-4 py-3 font-mono text-xs font-semibold text-orange-600 dark:text-orange-400 cursor-pointer"
+                        onClick={() => setSelected(s)}
+                      >{s.numero}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 max-w-32 truncate cursor-pointer" onClick={() => setSelected(s)}>{s.tipoSolicitud?.replace(/_/g, ' ')}</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-200 cursor-pointer" onClick={() => setSelected(s)}>{s.empleado?.nombreCompleto || '-'}</td>
+                      <td className="px-4 py-3 cursor-pointer" onClick={() => setSelected(s)}><PrioridadBadge prioridad={s.prioridad} /></td>
+                      <td className="px-4 py-3 cursor-pointer" onClick={() => setSelected(s)}><EstadoBadge estado={s.estado} /></td>
+                      <td className="px-4 py-3 cursor-pointer" onClick={() => setSelected(s)}><SLAIndicator porcentaje={s.porcentajeSLA} /></td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 cursor-pointer" onClick={() => setSelected(s)}>{s.tecnico?.nombre || <span className="text-slate-400 italic">Sin asignar</span>}</td>
+                      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap cursor-pointer" onClick={() => setSelected(s)}>{formatFecha(s.fechaCreacion)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -174,6 +274,73 @@ export function SolicitudesPage() {
           <Pagination page={pagination.page} totalPages={pagination.totalPages} onChange={cargar} />
         </div>
       </Card>
+
+      {/* Barra de acciones masivas */}
+      {canBulk && selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-xl">
+          <div className="bg-navy-500 dark:bg-navy-600 text-white rounded-2xl shadow-2xl px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+            {/* Contador */}
+            <div className="flex items-center gap-2 shrink-0">
+              <CheckSquare size={16} className="text-orange-400" />
+              <span className="text-sm font-semibold tabular-nums">{selectedIds.size}</span>
+              <span className="text-sm text-navy-200">{selectedIds.size === 1 ? 'seleccionada' : 'seleccionadas'}</span>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="ml-1 p-1 rounded hover:bg-navy-400 transition-colors"
+              >
+                <X size={14} className="text-navy-200" />
+              </button>
+            </div>
+
+            {/* Acciones */}
+            <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
+              {/* Cambiar estado */}
+              <div className="flex gap-2 flex-1 min-w-0">
+                <select
+                  value={bulkEstado}
+                  onChange={e => setBulkEstado(e.target.value)}
+                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-navy-400 dark:bg-navy-700 border border-navy-300 dark:border-navy-500 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
+                >
+                  <option value="">Estado...</option>
+                  {ESTADOS_BULK.map(e => (
+                    <option key={e} value={e}>{ESTADOS_LABEL[e] || e}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => ejecutarBulk('cambiar_estado')}
+                  disabled={bulkLoading || !bulkEstado}
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-sm font-medium transition-colors"
+                >
+                  Aplicar
+                </button>
+              </div>
+
+              {/* Asignar técnico — solo admin */}
+              {user.rol === 'admin' && tecnicos.length > 0 && (
+                <div className="flex gap-2 flex-1 min-w-0">
+                  <select
+                    value={bulkTecnico}
+                    onChange={e => setBulkTecnico(e.target.value)}
+                    className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-navy-400 dark:bg-navy-700 border border-navy-300 dark:border-navy-500 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
+                  >
+                    <option value="">Técnico...</option>
+                    {tecnicos.map(t => (
+                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => ejecutarBulk('asignar_tecnico')}
+                    disabled={bulkLoading || !bulkTecnico}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-sm font-medium transition-colors"
+                  >
+                    Asignar
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {selected && (
         <SolicitudModal
