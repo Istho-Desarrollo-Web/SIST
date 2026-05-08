@@ -192,11 +192,16 @@ async function cambiarEstado(req, res, next) {
       ip_address: req.ip, user_agent: req.headers['user-agent'],
     });
 
-    // Notificar al empleado del cambio de estado
     const empleado = await Empleado.findByPk(sol.empleado_id);
     notificarCambioEstado(sol, empleado, anterior, estado, req.body.comentarioNotificacion || null).catch(() => {});
 
-    res.json({ success: true, data: sol, message: 'Estado actualizado' });
+    const solActualizada = await Solicitud.findByPk(sol.id, {
+      include: [
+        { model: Empleado, as: 'empleado' },
+        { model: Usuario, as: 'tecnico', attributes: ['id', 'nombre', 'especialidad', 'email'] },
+      ],
+    });
+    res.json({ success: true, data: solActualizada, message: 'Estado actualizado' });
   } catch (err) { next(err); }
 }
 
@@ -216,7 +221,13 @@ async function asignarTecnico(req, res, next) {
       ip_address: req.ip, user_agent: req.headers['user-agent'],
     });
 
-    res.json({ success: true, data: sol, message: 'Técnico asignado' });
+    const solActualizada = await Solicitud.findByPk(sol.id, {
+      include: [
+        { model: Empleado, as: 'empleado' },
+        { model: Usuario, as: 'tecnico', attributes: ['id', 'nombre', 'especialidad', 'email'] },
+      ],
+    });
+    res.json({ success: true, data: solActualizada, message: 'Técnico asignado' });
   } catch (err) { next(err); }
 }
 
@@ -236,7 +247,13 @@ async function agregarComentario(req, res, next) {
     });
 
     await sol.update({ comentarios });
-    res.json({ success: true, data: sol, message: 'Comentario agregado' });
+    const solActualizada = await Solicitud.findByPk(sol.id, {
+      include: [
+        { model: Empleado, as: 'empleado' },
+        { model: Usuario, as: 'tecnico', attributes: ['id', 'nombre', 'especialidad', 'email'] },
+      ],
+    });
+    res.json({ success: true, data: solActualizada, message: 'Comentario agregado' });
   } catch (err) { next(err); }
 }
 
@@ -247,7 +264,13 @@ async function calificar(req, res, next) {
     if (!sol) return res.status(404).json({ success: false, message: 'Solicitud no encontrada' });
 
     await sol.update({ calificacion, comentarioCalificacion });
-    res.json({ success: true, data: sol, message: 'Calificación registrada' });
+    const solActualizada = await Solicitud.findByPk(sol.id, {
+      include: [
+        { model: Empleado, as: 'empleado' },
+        { model: Usuario, as: 'tecnico', attributes: ['id', 'nombre', 'especialidad', 'email'] },
+      ],
+    });
+    res.json({ success: true, data: solActualizada, message: 'Calificación registrada' });
   } catch (err) { next(err); }
 }
 

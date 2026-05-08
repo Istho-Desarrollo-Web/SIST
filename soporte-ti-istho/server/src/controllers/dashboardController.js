@@ -67,7 +67,7 @@ async function metricasSLA(req, res, next) {
       attributes: [
         'prioridad',
         [fn('COUNT', col('id')), 'total'],
-        [fn('SUM', literal("CASE WHEN porcentajeSLA <= 100 THEN 1 ELSE 0 END")), 'cumplidos'],
+        [literal('SUM(CASE WHEN `porcentajeSLA` <= 100 THEN 1 ELSE 0 END)'), 'cumplidos'],
       ],
       where: { estado: ['resuelto', 'cerrado'] },
       group: ['prioridad'],
@@ -108,7 +108,7 @@ async function actividadReciente(req, res, next) {
     const registros = await Auditoria.findAll({
       where: { tabla: 'solicitudes' },
       include: [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre'], required: false }],
-      order: [['createdAt', 'DESC']],
+      order: [['created_at', 'DESC']],
       limit: 15,
     });
 

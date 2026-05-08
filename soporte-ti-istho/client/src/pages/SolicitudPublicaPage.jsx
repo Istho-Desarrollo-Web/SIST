@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Search, CheckCircle, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import api from '../services/api';
 import { TIPOS_SOLICITUD_LABEL, PRIORIDADES_LABEL } from '../utils/constants';
 import { FileUploadZone } from '../components/common/FileUploadZone';
+import { Select } from '../components/common/Select';
 
 const DESCRIPCION_MAX = 1000;
 
@@ -125,8 +126,8 @@ export function SolicitudPublicaPage() {
       <div className="w-full max-w-lg space-y-6">
         {/* Header */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-navy-500 rounded-2xl mb-4">
-            <span className="text-white font-bold text-xl">IT</span>
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-navy-500 rounded-2xl mb-4 p-2">
+            <img src="/logo-blanco.png" alt="ISTHO" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-navy-500 dark:text-white">Solicitud de Soporte TI</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">ISTHO S.A.S. — Ingresa tu identificación y describe tu problema</p>
@@ -198,28 +199,37 @@ export function SolicitudPublicaPage() {
                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Tipo de solicitud <span className="text-red-500">*</span>
                 </label>
-                <select
-                  {...register('tipoSolicitud')}
-                  className="px-3 py-2.5 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                >
-                  <option value="">Seleccionar...</option>
-                  {Object.entries(TIPOS_SOLICITUD_LABEL).map(([v, l]) => (
-                    <option key={v} value={v}>{l}</option>
-                  ))}
-                </select>
+                <Controller
+                  control={control}
+                  name="tipoSolicitud"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Seleccionar..."
+                      options={[
+                        { value: '', label: 'Seleccionar...' },
+                        ...Object.entries(TIPOS_SOLICITUD_LABEL).map(([v, l]) => ({ value: v, label: l })),
+                      ]}
+                    />
+                  )}
+                />
                 {errors.tipoSolicitud && <p className="text-xs text-red-500">{errors.tipoSolicitud.message}</p>}
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Prioridad</label>
-                <select
-                  {...register('prioridad')}
-                  className="px-3 py-2.5 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                >
-                  {Object.entries(PRIORIDADES_LABEL).map(([v, l]) => (
-                    <option key={v} value={v}>{l}</option>
-                  ))}
-                </select>
+                <Controller
+                  control={control}
+                  name="prioridad"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={Object.entries(PRIORIDADES_LABEL).map(([v, l]) => ({ value: v, label: l }))}
+                    />
+                  )}
+                />
               </div>
 
               <div className="flex flex-col gap-1">

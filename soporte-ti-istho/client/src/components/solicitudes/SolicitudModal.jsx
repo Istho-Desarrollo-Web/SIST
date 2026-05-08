@@ -4,6 +4,7 @@ import { MessageSquare, RefreshCw, Star } from 'lucide-react';
 import { solicitudService } from '../../services/solicitudService';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
+import { Select } from '../common/Select';
 import { EstadoBadge } from './EstadoBadge';
 import { PrioridadBadge } from './PrioridadBadge';
 import { SLAIndicator } from './SLAIndicator';
@@ -97,15 +98,15 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Técnico asignado</p>
             {puedeGestionar ? (
-              <select
+              <Select
                 value={sol.tecnicoAsignado || ''}
-                onChange={e => asignar(e.target.value)}
-                disabled={saving}
-                className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-              >
-                <option value="">Sin asignar</option>
-                {tecnicos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-              </select>
+                onChange={val => asignar(val)}
+                placeholder="Sin asignar"
+                options={[
+                  { value: '', label: 'Sin asignar' },
+                  ...tecnicos.map(t => ({ value: t.id, label: t.nombre })),
+                ]}
+              />
             ) : (
               <p className="font-medium text-navy-500 dark:text-white">{sol.tecnico?.nombre || 'Sin asignar'}</p>
             )}

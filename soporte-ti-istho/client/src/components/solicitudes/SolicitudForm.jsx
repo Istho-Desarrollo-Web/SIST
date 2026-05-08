@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { empleadoService } from '../../services/empleadoService';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
+import { Select } from '../common/Select';
 import { FileUploadZone } from '../common/FileUploadZone';
 import { TIPOS_SOLICITUD_LABEL, PRIORIDADES_LABEL } from '../../utils/constants';
 
@@ -25,7 +26,7 @@ export function SolicitudForm({ onClose, onCreated }) {
   const [buscando, setBuscando] = useState(false);
   const [archivos, setArchivos] = useState([]);
 
-  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, setValue, control, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { prioridad: 'media' },
   });
@@ -92,25 +93,38 @@ export function SolicitudForm({ onClose, onCreated }) {
         {/* Tipo */}
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Tipo de solicitud</label>
-          <select
-            {...register('tipoSolicitud')}
-            className="px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-          >
-            <option value="">Seleccionar...</option>
-            {Object.entries(TIPOS_SOLICITUD_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
+          <Controller
+            control={control}
+            name="tipoSolicitud"
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Seleccionar..."
+                options={[
+                  { value: '', label: 'Seleccionar...' },
+                  ...Object.entries(TIPOS_SOLICITUD_LABEL).map(([v, l]) => ({ value: v, label: l })),
+                ]}
+              />
+            )}
+          />
           {errors.tipoSolicitud && <p className="text-xs text-red-500">{errors.tipoSolicitud.message}</p>}
         </div>
 
         {/* Prioridad */}
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Prioridad</label>
-          <select
-            {...register('prioridad')}
-            className="px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-          >
-            {Object.entries(PRIORIDADES_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
+          <Controller
+            control={control}
+            name="prioridad"
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onChange={field.onChange}
+                options={Object.entries(PRIORIDADES_LABEL).map(([v, l]) => ({ value: v, label: l }))}
+              />
+            )}
+          />
         </div>
 
         {/* Descripción */}

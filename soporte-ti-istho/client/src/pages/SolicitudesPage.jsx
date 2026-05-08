@@ -5,6 +5,7 @@ import { solicitudService } from '../services/solicitudService';
 import { usuarioService } from '../services/usuarioService';
 import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
+import { Select } from '../components/common/Select';
 import { Pagination } from '../components/common/Pagination';
 import { SkeletonTable } from '../components/common/Skeleton';
 import { EstadoBadge } from '../components/solicitudes/EstadoBadge';
@@ -139,22 +140,28 @@ export function SolicitudesPage() {
             />
           </div>
           <div className="flex gap-2">
-            <select
-              value={filters.estado}
-              onChange={e => setFilters(f => ({ ...f, estado: e.target.value }))}
-              className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-            >
-              <option value="">Todos los estados</option>
-              {Object.entries(ESTADOS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-            <select
-              value={filters.prioridad}
-              onChange={e => setFilters(f => ({ ...f, prioridad: e.target.value }))}
-              className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-            >
-              <option value="">Todas las prioridades</option>
-              {Object.entries(PRIORIDADES_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
+            <div className="flex-1">
+              <Select
+                value={filters.estado}
+                onChange={val => setFilters(f => ({ ...f, estado: val }))}
+                placeholder="Todos los estados"
+                options={[
+                  { value: '', label: 'Todos los estados' },
+                  ...Object.entries(ESTADOS_LABEL).map(([v, l]) => ({ value: v, label: l })),
+                ]}
+              />
+            </div>
+            <div className="flex-1">
+              <Select
+                value={filters.prioridad}
+                onChange={val => setFilters(f => ({ ...f, prioridad: val }))}
+                placeholder="Todas las prioridades"
+                options={[
+                  { value: '', label: 'Todas las prioridades' },
+                  ...Object.entries(PRIORIDADES_LABEL).map(([v, l]) => ({ value: v, label: l })),
+                ]}
+              />
+            </div>
             <Button variant="ghost" onClick={() => cargar(1)} size="md">
               <RefreshCw size={15} />
             </Button>

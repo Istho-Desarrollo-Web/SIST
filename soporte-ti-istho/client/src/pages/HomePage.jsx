@@ -22,8 +22,8 @@ export function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-700 to-navy-500 flex flex-col">
       {/* Hero */}
       <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-16">
-        <div className="w-20 h-20 bg-orange-500 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
-          <span className="text-white font-bold text-3xl">IT</span>
+        <div className="w-20 h-20 bg-orange-500 rounded-3xl flex items-center justify-center mb-6 shadow-xl p-3">
+          <img src="/logo-blanco.png" alt="ISTHO" className="w-full h-full object-contain" />
         </div>
         <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
           Soporte TI <span className="text-orange-400">ISTHO</span>
