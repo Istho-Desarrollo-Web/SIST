@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, UserX } from 'lucide-react';
 import { toast } from 'sonner';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { usuarioService } from '../services/usuarioService';
@@ -12,6 +12,7 @@ import { Modal } from '../components/common/Modal';
 import { Pagination } from '../components/common/Pagination';
 import { SkeletonTable } from '../components/common/Skeleton';
 import { Badge } from '../components/common/Badge';
+import { Select } from '../components/common/Select';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 
 const schemaBase = z.object({
@@ -35,7 +36,7 @@ const ROLES_COLOR = {
 
 function UsuarioForm({ usuario, onClose, onSaved }) {
   const isEdit = !!usuario;
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(isEdit ? schemaEdit : schemaCreate),
     defaultValues: usuario ? { ...usuario, password: '' } : { rol: 'usuario' },
   });
@@ -64,15 +65,18 @@ function UsuarioForm({ usuario, onClose, onSaved }) {
           <Input label="Identificación" error={errors.identificacion?.message} {...register('identificacion')} disabled={isEdit} />
           <Input label="Nombre completo" error={errors.nombre?.message} {...register('nombre')} />
           <Input label="Email" type="email" error={errors.email?.message} {...register('email')} />
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Rol</label>
-            <select
-              {...register('rol')}
-              className="px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-            >
-              {Object.entries(ROLES_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          </div>
+          <Controller
+            name="rol"
+            control={control}
+            render={({ field }) => (
+              <Select
+                label="Rol"
+                value={field.value}
+                onChange={field.onChange}
+                options={Object.entries(ROLES_LABEL).map(([v, l]) => ({ value: v, label: l }))}
+              />
+            )}
+          />
           <Input label="Área" error={errors.area?.message} {...register('area')} />
           <Input label="Especialidad" error={errors.especialidad?.message} {...register('especialidad')} />
           <div className="sm:col-span-2">
