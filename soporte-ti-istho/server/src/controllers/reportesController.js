@@ -101,7 +101,9 @@ async function exportarExcel(req, res, next) {
     // Filas de datos para la tabla
     const dataRows = solicitudes.map(s => [
       s.numero,
-      s.fechaCreacion ? new Date(s.fechaCreacion).toLocaleDateString('es-CO') : '',
+      s.fechaCreacion
+        ? new Date(s.fechaCreacion).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })
+        : '',
       s.empleado?.nombreCompleto || '-',
       s.empleado?.area || '-',
       s.empleado?.cargo || '-',
@@ -112,7 +114,9 @@ async function exportarExcel(req, res, next) {
       s.porcentajeSLA != null ? s.porcentajeSLA : '',
       s.tiempoResolucionMinutos || '',
       s.calificacion || '',
-      s.fechaResolucion ? new Date(s.fechaResolucion).toLocaleDateString('es-CO') : '',
+      s.fechaResolucion
+        ? new Date(s.fechaResolucion).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })
+        : '',
     ]);
 
     // Tabla nativa Excel — con auto-filtros y bandas incorporadas

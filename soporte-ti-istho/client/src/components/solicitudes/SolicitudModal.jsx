@@ -129,6 +129,12 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
               <p className="text-slate-700 dark:text-slate-300">{formatMinutos(sol.tiempoResolucionMinutos)}</p>
             </div>
           )}
+          {sol.fechaResolucion && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Fecha resolución</p>
+              <p className="text-slate-700 dark:text-slate-300">{formatFecha(sol.fechaResolucion)}</p>
+            </div>
+          )}
         </div>
 
         {/* Descripción */}
