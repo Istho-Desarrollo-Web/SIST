@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Ticket, Users, UserCog, LogOut, Menu, X, ChevronDown, BarChart2, Bell, PlusCircle, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Ticket, Users, UserCog, LogOut, Menu, X, ChevronDown, BarChart2, Bell, PlusCircle, RefreshCw, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
 import { LogoSIST } from '../common/LogoSIST';
@@ -26,6 +26,17 @@ export function Navbar() {
   const [loadingNotifs, setLoadingNotifs] = useState(false);
   const [hasNew, setHasNew] = useState(true);
   const canBell = user?.rol === 'admin' || user?.rol === 'tecnico';
+
+  const marcarLeida = (id) =>
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n));
+
+  const borrarNotif = (id) =>
+    setNotifs(prev => prev.filter(n => n.id !== id));
+
+  const marcarTodasLeidas = () =>
+    setNotifs(prev => prev.map(n => ({ ...n, leida: true })));
+
+  const borrarTodas = () => setNotifs([]);
 
   const openBell = async () => {
     setBellOpen(v => !v);
@@ -96,11 +107,17 @@ export function Navbar() {
                 {bellOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setBellOpen(false)} />
-                    <div className="absolute right-0 mt-1 w-80 bg-white dark:bg-navy-700 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 z-20">
-                      <div className="px-4 py-3 border-b border-slate-200 dark:border-navy-600">
+                    <div className="absolute right-0 mt-1 w-80 max-w-[calc(100vw-1rem)] bg-white dark:bg-navy-700 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 z-20 flex flex-col">
+                      {/* Header */}
+                      <div className="px-4 py-3 border-b border-slate-200 dark:border-navy-600 flex items-center justify-between">
                         <p className="text-sm font-semibold text-navy-500 dark:text-white">Actividad reciente</p>
+                        {notifs && notifs.length > 0 && (
+                          <span className="text-xs text-slate-400">{notifs.filter(n => !n.leida).length} sin leer</span>
+                        )}
                       </div>
-                      <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-navy-600">
+
+                      {/* Lista */}
+                      <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-navy-600">
                         {loadingNotifs ? (
                           <div className="px-4 py-6 text-center text-sm text-slate-400">Cargando...</div>
                         ) : !notifs || notifs.length === 0 ? (
@@ -109,7 +126,10 @@ export function Navbar() {
                           const esCreacion = item.operacion === 'INSERT';
                           const esCambioEstado = item.campo === 'estado';
                           return (
-                            <div key={item.id} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-navy-600 transition-colors">
+                            <div
+                              key={item.id}
+                              className={`flex items-start gap-3 px-4 py-3 transition-colors ${item.leida ? 'opacity-50' : 'hover:bg-slate-50 dark:hover:bg-navy-600'}`}
+                            >
                               <div className={`mt-0.5 p-1.5 rounded-full shrink-0 ${esCreacion ? 'bg-cgreen-100 dark:bg-cgreen-900/30' : 'bg-orange-100 dark:bg-orange-900/30'}`}>
                                 {esCreacion
                                   ? <PlusCircle size={11} className="text-cgreen-600 dark:text-cgreen-400" />
@@ -126,18 +146,49 @@ export function Navbar() {
                                 </p>
                                 <p className="text-xs text-slate-400 mt-0.5">{formatRelativo(item.fecha)}</p>
                               </div>
+                              <div className="flex flex-col gap-1 shrink-0 ml-1">
+                                <button
+                                  onClick={() => marcarLeida(item.id)}
+                                  disabled={item.leida}
+                                  title="Marcar como leído"
+                                  className="p-1 rounded text-cgreen-500 hover:bg-cgreen-50 dark:hover:bg-cgreen-900/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  <Check size={11} />
+                                </button>
+                                <button
+                                  onClick={() => borrarNotif(item.id)}
+                                  title="Borrar"
+                                  className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                >
+                                  <X size={11} />
+                                </button>
+                              </div>
                             </div>
                           );
                         })}
                       </div>
-                      <div className="px-4 py-2.5 border-t border-slate-200 dark:border-navy-600">
+
+                      {/* Footer acciones globales */}
+                      <div className="px-3 py-2.5 border-t border-slate-200 dark:border-navy-600 flex items-center gap-2">
                         <NavLink
                           to="/dashboard"
                           onClick={() => setBellOpen(false)}
-                          className="text-xs text-orange-500 hover:text-orange-600 font-medium"
+                          className="text-xs text-orange-500 hover:text-orange-600 font-medium mr-auto"
                         >
-                          Ver todo en Dashboard →
+                          Ver todo →
                         </NavLink>
+                        <button
+                          onClick={marcarTodasLeidas}
+                          className="text-xs px-2 py-1 rounded-lg bg-slate-100 dark:bg-navy-600 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-navy-500 transition-colors"
+                        >
+                          Marcar leídas
+                        </button>
+                        <button
+                          onClick={borrarTodas}
+                          className="text-xs px-2 py-1 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                        >
+                          Borrar todas
+                        </button>
                       </div>
                     </div>
                   </>
