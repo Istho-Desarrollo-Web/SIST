@@ -215,6 +215,21 @@ async function resumen(req, res, next) {
       if (s.porcentajeSLA > 100) slaVencidos++;
     });
 
+    const empCount = {};
+    solicitudes.forEach(s => {
+      const nombre = s.empleado?.nombreCompleto;
+      if (!nombre) return;
+      empCount[nombre] = (empCount[nombre] || 0) + 1;
+    });
+    const topEmpleados = Object.entries(empCount)
+      .map(([nombre, total]) => ({
+        nombre,
+        total,
+        porcentaje: solicitudes.length > 0 ? Math.round((total / solicitudes.length) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+
     res.json({
       success: true,
       data: {
@@ -228,6 +243,7 @@ async function resumen(req, res, next) {
         cumplimientoSLA: solicitudes.length
           ? Math.round(((solicitudes.length - slaVencidos) / solicitudes.length) * 100)
           : 100,
+        topEmpleados,
       },
     });
   } catch (err) { next(err); }
