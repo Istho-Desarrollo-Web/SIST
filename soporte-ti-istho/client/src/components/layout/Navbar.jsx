@@ -212,7 +212,7 @@ export function Navbar() {
               {userMenu && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setUserMenu(false)} />
-                  <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-navy-700 rounded-xl shadow-lg border border-slate-200 dark:border-navy-600 z-20 py-1">
+                  <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-navy-700 rounded-xl shadow-lg border border-slate-200 dark:border-navy-600 z-20 py-1 animate-[fadeIn_0.15s_ease]">
                     <NavLink
                       to="/perfil"
                       onClick={() => setUserMenu(false)}
@@ -245,7 +245,7 @@ export function Navbar() {
 
         {/* Mobile menu */}
         {open && (
-          <div className="md:hidden pb-3 space-y-1">
+          <div className="md:hidden pb-3 space-y-1 animate-[fadeIn_0.15s_ease]">
             {visibleItems.map(item => (
               <NavLink
                 key={item.to}
