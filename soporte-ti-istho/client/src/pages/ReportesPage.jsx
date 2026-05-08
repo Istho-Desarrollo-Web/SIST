@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FileDown, RefreshCw, BarChart2, TrendingUp } from 'lucide-react';
+import {
+  PieChart, Pie, Cell, Tooltip as RechartTooltip, Legend, ResponsiveContainer,
+} from 'recharts';
 import { toast } from 'sonner';
 import { reportesService } from '../services/reportesService';
 import { usuarioService } from '../services/usuarioService';
@@ -14,6 +17,8 @@ import { SLAIndicator } from '../components/solicitudes/SLAIndicator';
 import { formatFecha, formatMinutos } from '../utils/formatters';
 import { ESTADOS_LABEL, PRIORIDADES_LABEL, TIPOS_SOLICITUD_LABEL } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
+
+const TIPO_COLORS = ['#E8531E', '#1B2340', '#4C8C2B', '#3B82F6', '#F59E0B', '#8B5CF6', '#64748B', '#DC2626', '#0891B2'];
 
 const EMPTY_FILTERS = {
   fechaDesde: '', fechaHasta: '', estado: '', prioridad: '', tipoSolicitud: '', tecnico: '',
@@ -250,6 +255,82 @@ export function ReportesPage() {
                 </div>
               ))}
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Análisis adicional */}
+      {resumen && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Tipos más frecuentes — donut */}
+          <Card className="p-4">
+            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-4 flex items-center gap-2">
+              <TrendingUp size={15} className="text-orange-500" /> Tipos de solicitud más frecuentes
+            </h3>
+            {(() => {
+              const data = Object.entries(resumen.porTipo || {})
+                .map(([tipo, n]) => ({ name: TIPOS_SOLICITUD_LABEL[tipo] || tipo, value: n }))
+                .sort((a, b) => b.value - a.value);
+              if (data.length === 0) return <p className="text-sm text-slate-400 text-center py-6">Sin datos</p>;
+              return (
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={data}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={75}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {data.map((_, i) => (
+                        <Cell key={i} fill={TIPO_COLORS[i % TIPO_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartTooltip formatter={(val, name) => [val, name]} />
+                    <Legend
+                      formatter={(val) => <span className="text-xs text-slate-600 dark:text-slate-300">{val}</span>}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              );
+            })()}
+          </Card>
+
+          {/* Top empleados — tabla */}
+          <Card className="p-4">
+            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-4 flex items-center gap-2">
+              <TrendingUp size={15} className="text-orange-500" /> Empleados con más solicitudes
+            </h3>
+            {(!resumen.topEmpleados || resumen.topEmpleados.length === 0) ? (
+              <p className="text-sm text-slate-400 text-center py-6">Sin datos</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-navy-600">
+                      <th className="text-left pb-2 pr-4">#</th>
+                      <th className="text-left pb-2 pr-4">Empleado</th>
+                      <th className="text-right pb-2 pr-4">Solicitudes</th>
+                      <th className="text-right pb-2">%</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-navy-700">
+                    {resumen.topEmpleados.map((emp, i) => (
+                      <tr key={emp.nombre} className="hover:bg-slate-50 dark:hover:bg-navy-800/50 transition-colors">
+                        <td className="py-2.5 pr-4 text-xs font-bold text-slate-400">{i + 1}</td>
+                        <td className="py-2.5 pr-4 font-medium text-navy-500 dark:text-white">{emp.nombre}</td>
+                        <td className="py-2.5 pr-4 text-right font-bold text-navy-500 dark:text-white">{emp.total}</td>
+                        <td className="py-2.5 text-right">
+                          <span className="text-xs font-semibold text-orange-500">{emp.porcentaje}%</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
         </div>
       )}
