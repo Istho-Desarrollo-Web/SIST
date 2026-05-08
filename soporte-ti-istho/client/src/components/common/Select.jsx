@@ -38,7 +38,7 @@ export function Select({ value, onChange, options = [], placeholder = 'Seleccion
       </button>
 
       {open && (
-        <div className="absolute top-full mt-1 z-50 w-full min-w-max bg-white dark:bg-navy-800 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 overflow-hidden">
+        <div className="absolute top-full mt-1 z-50 w-full bg-white dark:bg-navy-800 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 overflow-hidden">
           <div className="max-h-56 overflow-y-auto py-1">
             {options.map(opt => {
               const isActive = String(opt.value) === String(value);

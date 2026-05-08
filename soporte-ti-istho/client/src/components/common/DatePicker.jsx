@@ -111,7 +111,7 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label 
       </div>
 
       {open && (
-        <div className="absolute top-full mt-1 z-50 w-72 bg-white dark:bg-navy-800 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 overflow-hidden">
+        <div className="absolute top-full mt-1 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-navy-800 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 overflow-hidden">
           {/* Navigation header */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-navy-700">
             <button
