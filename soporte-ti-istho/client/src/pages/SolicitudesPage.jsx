@@ -7,7 +7,7 @@ import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
 import { Select } from '../components/common/Select';
 import { Pagination } from '../components/common/Pagination';
-import { SkeletonTable } from '../components/common/Skeleton';
+import { SkeletonTable, SkeletonCard } from '../components/common/Skeleton';
 import { EstadoBadge } from '../components/solicitudes/EstadoBadge';
 import { PrioridadBadge } from '../components/solicitudes/PrioridadBadge';
 import { SLAIndicator } from '../components/solicitudes/SLAIndicator';
@@ -172,7 +172,12 @@ export function SolicitudesPage() {
       {/* Lista / Tabla */}
       <Card className="overflow-hidden">
         {loading ? (
-          <div className="p-4"><SkeletonTable rows={5} cols={5} /></div>
+          <>
+            {/* Mobile skeleton */}
+            <div className="block sm:hidden"><SkeletonCard rows={4} /></div>
+            {/* Desktop skeleton */}
+            <div className="hidden sm:block p-4"><SkeletonTable rows={5} cols={7} /></div>
+          </>
         ) : solicitudes.length === 0 ? (
           <p className="py-10 text-center text-slate-400 text-sm">No hay solicitudes</p>
         ) : (
@@ -315,16 +320,17 @@ export function SolicitudesPage() {
             <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
               {/* Cambiar estado */}
               <div className="flex gap-2 flex-1 min-w-0">
-                <select
-                  value={bulkEstado}
-                  onChange={e => setBulkEstado(e.target.value)}
-                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-navy-400 dark:bg-navy-700 border border-navy-300 dark:border-navy-500 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-                >
-                  <option value="">Estado...</option>
-                  {ESTADOS_BULK.map(e => (
-                    <option key={e} value={e}>{ESTADOS_LABEL[e] || e}</option>
-                  ))}
-                </select>
+                <div className="flex-1 min-w-0">
+                  <Select
+                    value={bulkEstado}
+                    onChange={setBulkEstado}
+                    placeholder="Estado..."
+                    options={[
+                      { value: '', label: 'Estado...' },
+                      ...ESTADOS_BULK.map(e => ({ value: e, label: ESTADOS_LABEL[e] || e })),
+                    ]}
+                  />
+                </div>
                 <button
                   onClick={() => ejecutarBulk('cambiar_estado')}
                   disabled={loadingEstado || loadingTecnico || !bulkEstado}
@@ -338,16 +344,17 @@ export function SolicitudesPage() {
               {/* Asignar técnico — solo admin */}
               {user.rol === 'admin' && tecnicos.length > 0 && (
                 <div className="flex gap-2 flex-1 min-w-0">
-                  <select
-                    value={bulkTecnico}
-                    onChange={e => setBulkTecnico(e.target.value)}
-                    className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-navy-400 dark:bg-navy-700 border border-navy-300 dark:border-navy-500 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-                  >
-                    <option value="">Técnico...</option>
-                    {tecnicos.map(t => (
-                      <option key={t.id} value={t.id}>{t.nombre}</option>
-                    ))}
-                  </select>
+                  <div className="flex-1 min-w-0">
+                    <Select
+                      value={bulkTecnico}
+                      onChange={setBulkTecnico}
+                      placeholder="Técnico..."
+                      options={[
+                        { value: '', label: 'Técnico...' },
+                        ...tecnicos.map(t => ({ value: String(t.id), label: t.nombre })),
+                      ]}
+                    />
+                  </div>
                   <button
                     onClick={() => ejecutarBulk('asignar_tecnico')}
                     disabled={loadingTecnico || loadingEstado || !bulkTecnico}
