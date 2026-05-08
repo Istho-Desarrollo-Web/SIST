@@ -1,3 +1,9 @@
+export function LogoIcon({ size = 24 }) {
+  return (
+    <img src="/logo-blanco.png" alt="ISTHO" style={{ width: size, height: size }} className="object-contain" />
+  );
+}
+
 export function LogoSIST({ size = 32, showText = true, textVariant = 'light', textClass = '' }) {
   const isLight = textVariant === 'light';
   return (
