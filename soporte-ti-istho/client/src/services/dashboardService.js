@@ -5,5 +5,5 @@ export const dashboardService = {
   porTecnico: () => api.get('/dashboard/tecnicos'),
   metricasSLA: () => api.get('/dashboard/sla'),
   tendencias: () => api.get('/dashboard/tendencias'),
-  actividadReciente: () => api.get('/dashboard/actividad'),
+  actividadReciente: (params = {}) => api.get('/dashboard/actividad', { params }),
 };

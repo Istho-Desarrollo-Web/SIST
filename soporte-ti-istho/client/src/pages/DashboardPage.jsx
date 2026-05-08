@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Ticket, AlertTriangle, Clock, TrendingUp, Activity, PlusCircle, RefreshCw } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -8,6 +8,7 @@ import { dashboardService } from '../services/dashboardService';
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { Card } from '../components/common/Card';
 import { Skeleton } from '../components/common/Skeleton';
+import { Pagination } from '../components/common/Pagination';
 import { ESTADOS_LABEL } from '../utils/constants';
 import { formatRelativo } from '../utils/formatters';
 import { toast } from 'sonner';
@@ -21,6 +22,8 @@ export function DashboardPage() {
   const [tendencias, setTendencias] = useState(null);
   const [slaMetrics, setSlaMetrics] = useState([]);
   const [actividad, setActividad] = useState([]);
+  const [actividadPage, setActividadPage] = useState(1);
+  const [actividadPagination, setActividadPagination] = useState({ totalPages: 1 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export function DashboardPage() {
       dashboardService.porTecnico(),
       dashboardService.tendencias(),
       dashboardService.metricasSLA(),
-      dashboardService.actividadReciente(),
+      dashboardService.actividadReciente({ page: 1, limit: 10 }),
     ])
       .then(([r, t, tr, sla, act]) => {
         setResumen(r.data.data);
@@ -43,9 +46,21 @@ export function DashboardPage() {
           pct: item.total > 0 ? Math.round((item.cumplidos / item.total) * 100) : 100,
         })));
         setActividad(act.data.data || []);
+        setActividadPagination(act.data.pagination || { totalPages: 1 });
       })
       .catch(() => toast.error('Error cargando dashboard'))
       .finally(() => setLoading(false));
+  }, []);
+
+  const cargarActividad = useCallback(async (page) => {
+    try {
+      const res = await dashboardService.actividadReciente({ page, limit: 10 });
+      setActividad(res.data.data || []);
+      setActividadPagination(res.data.pagination || { totalPages: 1 });
+      setActividadPage(page);
+    } catch {
+      toast.error('Error cargando actividad');
+    }
   }, []);
 
   return (
@@ -259,6 +274,11 @@ export function DashboardPage() {
               );
             })}
           </div>
+          <Pagination
+            page={actividadPage}
+            totalPages={actividadPagination.totalPages}
+            onChange={cargarActividad}
+          />
         )}
       </Card>
     </div>
