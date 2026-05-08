@@ -201,7 +201,7 @@ async function resumen(req, res, next) {
     const porPrioridad = {};
     const porTipo = {};
     const porTecnico = {};
-    let totalResueltos = 0, sumaTiempo = 0, slaVencidos = 0;
+    let totalResueltos = 0, sumaTiempo = 0;
 
     solicitudes.forEach(s => {
       porEstado[s.estado] = (porEstado[s.estado] || 0) + 1;
@@ -212,8 +212,10 @@ async function resumen(req, res, next) {
       porTecnico[tNombre] = (porTecnico[tNombre] || 0) + 1;
 
       if (s.tiempoResolucionMinutos) { totalResueltos++; sumaTiempo += s.tiempoResolucionMinutos; }
-      if (s.porcentajeSLA > 100) slaVencidos++;
     });
+
+    const solicitudesFinalizadas = solicitudes.filter(s => ['resuelto', 'cerrado'].includes(s.estado));
+    const slaVencidos = solicitudesFinalizadas.filter(s => s.porcentajeSLA > 100).length;
 
     const empCount = {};
     solicitudes.forEach(s => {
@@ -240,8 +242,8 @@ async function resumen(req, res, next) {
         porTecnico,
         tiempoPromedioResolucion: totalResueltos ? Math.round(sumaTiempo / totalResueltos) : null,
         slaVencidos,
-        cumplimientoSLA: solicitudes.length
-          ? Math.round(((solicitudes.length - slaVencidos) / solicitudes.length) * 100)
+        cumplimientoSLA: solicitudesFinalizadas.length
+          ? Math.round(((solicitudesFinalizadas.length - slaVencidos) / solicitudesFinalizadas.length) * 100)
           : 100,
         topEmpleados,
       },
