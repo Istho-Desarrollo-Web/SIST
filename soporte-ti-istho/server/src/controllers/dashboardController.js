@@ -105,11 +105,16 @@ async function tendencias(req, res, next) {
 
 async function actividadReciente(req, res, next) {
   try {
-    const registros = await Auditoria.findAll({
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+    const offset = (page - 1) * limit;
+
+    const { count, rows: registros } = await Auditoria.findAndCountAll({
       where: { tabla: 'solicitudes' },
       include: [{ model: Usuario, as: 'usuario', attributes: ['id', 'nombre'], required: false }],
       order: [['created_at', 'DESC']],
-      limit: 15,
+      limit,
+      offset,
     });
 
     const ids = [...new Set(registros.map(r => r.registro_id))];
@@ -137,7 +142,11 @@ async function actividadReciente(req, res, next) {
       };
     });
 
-    res.json({ success: true, data });
+    res.json({
+      success: true,
+      data,
+      pagination: { total: count, page, limit, totalPages: Math.ceil(count / limit) },
+    });
   } catch (err) { next(err); }
 }
 
