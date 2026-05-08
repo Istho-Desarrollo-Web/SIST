@@ -107,7 +107,7 @@ export function Navbar() {
                 {bellOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setBellOpen(false)} />
-                    <div className="absolute right-0 mt-1 w-80 max-w-[calc(100vw-1rem)] bg-white dark:bg-navy-700 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 z-20 flex flex-col">
+                    <div className="absolute right-0 mt-1 w-80 max-w-[calc(100vw-1rem)] bg-white dark:bg-navy-700 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 z-20 flex flex-col animate-[fadeIn_0.15s_ease]">
                       {/* Header */}
                       <div className="px-4 py-3 border-b border-slate-200 dark:border-navy-600 flex items-center justify-between">
                         <p className="text-sm font-semibold text-navy-500 dark:text-white">Actividad reciente</p>
