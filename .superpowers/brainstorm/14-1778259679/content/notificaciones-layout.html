@@ -1,0 +1,91 @@
+<h2>Menú de Notificaciones — ¿Cómo debe verse en móvil?</h2>
+<p class="subtitle">El menú actual usa <code>absolute right-0 w-80</code> y se recorta en pantallas pequeñas. Elige el enfoque de diseño.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1B2340;padding:16px;border-radius:8px;">
+      <div style="background:#fff;border-radius:8px;padding:12px;max-width:280px;margin:0 auto;">
+        <div style="font-weight:700;font-size:13px;color:#1B2340;margin-bottom:8px;display:flex;justify-content:space-between;">
+          <span>🔔 Notificaciones (3)</span>
+          <span style="font-size:11px;color:#E8531E;cursor:pointer;">Marcar todas leídas</span>
+        </div>
+        <div style="font-size:11px;color:#555;border-bottom:1px solid #eee;padding-bottom:6px;margin-bottom:6px;display:flex;gap:6px;align-items:center;">
+          <span style="flex:1;">Nueva solicitud TKT-0001 asignada</span>
+          <button style="font-size:10px;background:#eee;border:none;padding:2px 5px;border-radius:3px;cursor:pointer;">✓</button>
+          <button style="font-size:10px;background:#fdd;border:none;padding:2px 5px;border-radius:3px;cursor:pointer;">✕</button>
+        </div>
+        <div style="font-size:11px;color:#555;display:flex;gap:6px;align-items:center;">
+          <span style="flex:1;">SLA crítico vencido - TKT-0002</span>
+          <button style="font-size:10px;background:#eee;border:none;padding:2px 5px;border-radius:3px;cursor:pointer;">✓</button>
+          <button style="font-size:10px;background:#fdd;border:none;padding:2px 5px;border-radius:3px;cursor:pointer;">✕</button>
+        </div>
+        <div style="border-top:1px solid #eee;margin-top:8px;padding-top:6px;text-align:center;">
+          <button style="font-size:11px;background:#fee;border:1px solid #E8531E;color:#E8531E;padding:3px 12px;border-radius:4px;cursor:pointer;">Borrar todas</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Panel flotante compacto</h3>
+      <p>Cada notificación tiene botones ✓ (marcar leída) y ✕ (borrar) inline. Botón global "Marcar todas leídas" + "Borrar todas". En móvil el panel usa <code>max-w-[calc(100vw-2rem)]</code> para no recortarse.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1B2340;padding:16px;border-radius:8px;">
+      <div style="background:#fff;border-radius:8px;padding:12px;max-width:280px;margin:0 auto;">
+        <div style="font-weight:700;font-size:13px;color:#1B2340;margin-bottom:8px;">🔔 Notificaciones (3)</div>
+        <div style="font-size:11px;color:#555;border-bottom:1px solid #eee;padding-bottom:6px;margin-bottom:6px;">
+          <div style="margin-bottom:4px;">Nueva solicitud TKT-0001 asignada</div>
+          <div style="display:flex;gap:4px;">
+            <button style="font-size:10px;background:#1B2340;color:#fff;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;">Leído</button>
+            <button style="font-size:10px;background:#E8531E;color:#fff;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;">Borrar</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#555;">
+          <div style="margin-bottom:4px;">SLA crítico vencido - TKT-0002</div>
+          <div style="display:flex;gap:4px;">
+            <button style="font-size:10px;background:#1B2340;color:#fff;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;">Leído</button>
+            <button style="font-size:10px;background:#E8531E;color:#fff;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;">Borrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Botones visibles bajo cada item</h3>
+      <p>Cada notificación muestra directamente los botones "Leído" y "Borrar" debajo del texto. Más visible en táctil/móvil pero ocupa más espacio vertical.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1B2340;padding:16px;border-radius:8px;">
+      <div style="background:#fff;border-radius:8px;max-width:280px;margin:0 auto;overflow:hidden;">
+        <div style="font-weight:700;font-size:13px;color:#1B2340;padding:10px 12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;">
+          <span>🔔 Notificaciones (3)</span>
+          <span style="font-size:10px;color:#888;">Ver todas</span>
+        </div>
+        <div style="font-size:11px;color:#555;padding:8px 12px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;">Nueva solicitud TKT-0001 asignada<br><span style="color:#aaa;font-size:10px;">hace 5 min</span></div>
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <button style="font-size:9px;background:#4C8C2B;color:#fff;border:none;padding:2px 6px;border-radius:3px;">✓</button>
+            <button style="font-size:9px;background:#E8531E;color:#fff;border:none;padding:2px 6px;border-radius:3px;">✕</button>
+          </div>
+        </div>
+        <div style="padding:8px 12px;display:flex;gap:6px;">
+          <button style="flex:1;font-size:10px;background:#f5f5f5;border:1px solid #ddd;padding:4px;border-radius:4px;cursor:pointer;">Marcar todas leídas</button>
+          <button style="flex:1;font-size:10px;background:#fff0ee;border:1px solid #E8531E;color:#E8531E;padding:4px;border-radius:4px;cursor:pointer;">Borrar todas</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Panel con pie de acciones globales</h3>
+      <p>Botones ✓/✕ compactos a la derecha de cada item. Barra fija al fondo del panel con "Marcar todas leídas" y "Borrar todas". Equilibrio entre compacidad y accesibilidad táctil.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:16px;padding:12px;background:#f8f8f8;border-radius:8px;">
+  <p class="label">Nota importante</p>
+  <p style="font-size:13px;">Las acciones <strong>marcar como leído</strong> y <strong>borrar</strong> serán <strong>solo frontend</strong> (estado en React) por ahora, sin cambios en la base de datos. ¿Estás de acuerdo con ese alcance?</p>
+</div>
