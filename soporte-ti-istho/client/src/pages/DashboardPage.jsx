@@ -247,38 +247,40 @@ export function DashboardPage() {
         ) : actividad.length === 0 ? (
           <p className="py-4 text-center text-slate-400 text-sm">Sin actividad registrada</p>
         ) : (
-          <div className="space-y-0 divide-y divide-slate-100 dark:divide-navy-600">
-            {actividad.map(item => {
-              const esCreacion = item.operacion === 'INSERT';
-              const esCambioEstado = item.campo === 'estado';
-              return (
-                <div key={item.id} className="flex items-start gap-3 py-3">
-                  <div className={`mt-0.5 p-1.5 rounded-full shrink-0 ${esCreacion ? 'bg-cgreen-100 dark:bg-cgreen-900/30' : 'bg-orange-100 dark:bg-orange-900/30'}`}>
-                    {esCreacion
-                      ? <PlusCircle size={13} className="text-cgreen-600 dark:text-cgreen-400" />
-                      : <RefreshCw size={13} className="text-orange-500" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-snug">
-                      <span className="font-semibold text-navy-500 dark:text-white">{item.usuario}</span>
+          <>
+            <div className="space-y-0 divide-y divide-slate-100 dark:divide-navy-600">
+              {actividad.map(item => {
+                const esCreacion = item.operacion === 'INSERT';
+                const esCambioEstado = item.campo === 'estado';
+                return (
+                  <div key={item.id} className="flex items-start gap-3 py-3">
+                    <div className={`mt-0.5 p-1.5 rounded-full shrink-0 ${esCreacion ? 'bg-cgreen-100 dark:bg-cgreen-900/30' : 'bg-orange-100 dark:bg-orange-900/30'}`}>
                       {esCreacion
-                        ? <> creó el ticket <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span></>
-                        : esCambioEstado
-                          ? <> cambió estado de <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span> → <span className="font-semibold">{ESTADOS_LABEL[item.estadoNuevo] || item.estadoNuevo}</span></>
-                          : <> actualizó <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span></>}
-                      {item.empleado && <span className="text-slate-400"> ({item.empleado})</span>}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{formatRelativo(item.fecha)}</p>
+                        ? <PlusCircle size={13} className="text-cgreen-600 dark:text-cgreen-400" />
+                        : <RefreshCw size={13} className="text-orange-500" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-snug">
+                        <span className="font-semibold text-navy-500 dark:text-white">{item.usuario}</span>
+                        {esCreacion
+                          ? <> creó el ticket <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span></>
+                          : esCambioEstado
+                            ? <> cambió estado de <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span> → <span className="font-semibold">{ESTADOS_LABEL[item.estadoNuevo] || item.estadoNuevo}</span></>
+                            : <> actualizó <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span></>}
+                        {item.empleado && <span className="text-slate-400"> ({item.empleado})</span>}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">{formatRelativo(item.fecha)}</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-          <Pagination
-            page={actividadPage}
-            totalPages={actividadPagination.totalPages}
-            onChange={cargarActividad}
-          />
+                );
+              })}
+            </div>
+            <Pagination
+              page={actividadPage}
+              totalPages={actividadPagination.totalPages}
+              onChange={cargarActividad}
+            />
+          </>
         )}
       </Card>
     </div>
