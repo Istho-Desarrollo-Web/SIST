@@ -228,10 +228,20 @@ Llamar a `registrarAuditoria()` en: crear formulario, editar formulario, elimina
 
 ### Páginas nuevas (`client/src/pages/`)
 
-**`FormulariosPage.jsx`** — `/formularios` (admin/tecnico)
-- Lista de formularios del usuario con nombre, estado (activo/inactivo), fecha de creación
-- Botón "Nuevo formulario" → redirige al builder
-- Acciones por fila: Editar, Ver respuestas, Eliminar
+**`FormulariosHomePage.jsx`** — `/formularios` (todos los roles + público)
+Página de inicio del módulo con dos secciones en scroll vertical:
+
+**Sección 1 — "Formularios disponibles para ti"** (visible para todos):
+- Tarjetas horizontales de formularios activos accesibles según el contexto del usuario
+  - Sin autenticación: solo formularios con `acceso = 'publico'`
+  - Autenticado: formularios `publico` + `autenticado`
+- Cada tarjeta: nombre, descripción, badge de acceso (Público / Autenticado), badge "con PDF" si tiene plantilla
+- Botón "Llenar formulario" → redirige a `/formularios/:id/responder`
+- Si el usuario está autenticado: subsección "Mis respuestas recientes" con los últimos 5 PDFs generados propios y botón de descarga
+
+**Sección 2 — "Administración"** (visible solo para `admin` y `tecnico`):
+- Tres accesos directos en grid: "Mis formularios" (lista de formularios creados por mí), "PDFs generados" (historial completo), "Nuevo formulario" (CTA naranja)
+- Debajo: tabla compacta de los 5 formularios propios más recientes con acciones rápidas (Editar, Ver respuestas)
 
 **`FormularioBuilderPage.jsx`** — `/formularios/nuevo` y `/formularios/:id/editar` (admin/tecnico)
 - Tres pestañas:
@@ -242,11 +252,6 @@ Llamar a `registrarAuditoria()` en: crear formulario, editar formulario, elimina
 **`FormularioResponderPage.jsx`** — `/formularios/:id/responder` (público o auth)
 - Renderiza el formulario dinámico con FormularioRenderer
 - Al enviar: POST a `/responder` → muestra PDFSuccessModal
-
-**`FormulariosDisponiblesPage.jsx`** — `/formularios/disponibles` (todos los roles + público)
-- Tarjetas de formularios activos disponibles para el usuario
-- Cada tarjeta: nombre, descripción, botón "Llenar formulario"
-- Sección "Mis respuestas" (si autenticado): lista de PDFs generados propios con botón de descarga
 
 **`FormularioPDFsPage.jsx`** — `/formularios/pdfs` (admin/tecnico)
 - Tabla con: formulario, respondente, fecha, acciones (ver, descargar)
@@ -311,10 +316,9 @@ Nueva sección "Formulario asociado" al final del modal:
 
 ### Rutas en `routes.jsx`
 ```jsx
-/formularios              → FormulariosPage (admin, tecnico)
+/formularios              → FormulariosHomePage (todos los roles + público)
 /formularios/nuevo        → FormularioBuilderPage (admin, tecnico)
 /formularios/:id/editar   → FormularioBuilderPage (admin, tecnico)
-/formularios/disponibles  → FormulariosDisponiblesPage (todos)
 /formularios/pdfs         → FormularioPDFsPage (admin, tecnico)
 /formularios/:id/responder → FormularioResponderPage (público o auth)
 ```
