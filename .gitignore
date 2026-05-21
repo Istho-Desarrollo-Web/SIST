@@ -7,3 +7,7 @@ PROMPT_*.md
 # OS
 .DS_Store
 Thumbs.db
+
+
+# SuperPowers
+.superpowers/
