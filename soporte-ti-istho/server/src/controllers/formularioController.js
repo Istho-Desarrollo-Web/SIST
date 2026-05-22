@@ -15,7 +15,7 @@ async function listar(req, res, next) {
     const rows = await Formulario.findAll({
       where,
       include: [{ model: Usuario, as: 'creador', attributes: ['id', 'nombre'] }],
-      order: [['createdAt', 'DESC']],
+      order: [['created_at', 'DESC']],
     });
     res.json({ success: true, data: rows });
   } catch (err) { next(err); }
@@ -43,13 +43,21 @@ async function obtener(req, res, next) {
         { model: FormularioCampo, as: 'campos', order: [['orden', 'ASC']] },
         {
           model: FormularioPdfPlantilla, as: 'plantillas',
-          include: [{ model: FormularioPdfMapeo, as: 'mapeos' }],
-          order: [['createdAt', 'DESC']],
+          order: [['created_at', 'DESC']],
           limit: 1,
         },
       ],
     });
     if (!formulario) return res.status(404).json({ success: false, message: 'Formulario no encontrado' });
+
+    // Buscar mapeos en query separada para evitar el LIMIT 1 anidado de Sequelize
+    if (formulario.plantillas && formulario.plantillas.length > 0) {
+      const mapeos = await FormularioPdfMapeo.findAll({
+        where: { plantillaId: formulario.plantillas[0].id },
+      });
+      formulario.plantillas[0].setDataValue('mapeos', mapeos);
+    }
+
     res.json({ success: true, data: formulario });
   } catch (err) { next(err); }
 }
@@ -65,6 +73,20 @@ async function obtenerPublico(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function obtenerVista(req, res, next) {
+  try {
+    const formulario = await Formulario.findOne({
+      where: { id: req.params.id, activo: true },
+      include: [{ model: FormularioCampo, as: 'campos', order: [['orden', 'ASC']] }],
+    });
+    if (!formulario) return res.status(404).json({ success: false, message: 'Formulario no disponible' });
+    if (formulario.acceso === 'autenticado' && !req.user) {
+      return res.status(401).json({ success: false, message: 'Autenticación requerida' });
+    }
+    res.json({ success: true, data: formulario });
+  } catch (err) { next(err); }
+}
+
 async function listarDisponibles(req, res, next) {
   try {
     const where = { activo: true };
@@ -74,9 +96,9 @@ async function listarDisponibles(req, res, next) {
     const rows = await Formulario.findAll({
       where,
       include: [
-        { model: FormularioPdfPlantilla, as: 'plantillas', attributes: ['id'], limit: 1, order: [['createdAt', 'DESC']] },
+        { model: FormularioPdfPlantilla, as: 'plantillas', attributes: ['id'], limit: 1, order: [['created_at', 'DESC']] },
       ],
-      order: [['createdAt', 'DESC']],
+      order: [['created_at', 'DESC']],
     });
     res.json({ success: true, data: rows });
   } catch (err) { next(err); }
@@ -115,23 +137,60 @@ async function eliminar(req, res, next) {
 
 async function guardarCampos(req, res, next) {
   try {
-    const { campos } = req.body; // [{ tipo, etiqueta, descripcion, placeholder, requerido, opciones }]
+    const { campos } = req.body;
     if (!Array.isArray(campos)) return res.status(400).json({ success: false, message: 'campos debe ser array' });
 
-    await FormularioCampo.destroy({ where: { formularioId: req.params.id } });
-    const creados = await FormularioCampo.bulkCreate(
-      campos.map((c, i) => ({ ...c, formularioId: parseInt(req.params.id), orden: i }))
+    const formularioId = parseInt(req.params.id);
+
+    // IDs actuales en DB para este formulario
+    const existentes = await FormularioCampo.findAll({ where: { formularioId }, attributes: ['id'] });
+    const idsExistentes = existentes.map(c => c.id);
+    const idsEnviados = campos.filter(c => c.id).map(c => parseInt(c.id));
+
+    // Eliminar sólo los campos que ya no están en la lista (preserva FK → mapeos no se borran)
+    const idsAEliminar = idsExistentes.filter(id => !idsEnviados.includes(id));
+    if (idsAEliminar.length) {
+      await FormularioCampo.destroy({ where: { id: idsAEliminar } });
+    }
+
+    // Upsert: actualizar existentes, crear nuevos
+    const resultados = await Promise.all(
+      campos.map(async ({ _key, id, ...c }, i) => {
+        const data = {
+          ...c,
+          formularioId,
+          orden: i,
+          opciones: Array.isArray(c.opciones) ? c.opciones : (c.opciones ? JSON.parse(c.opciones) : null),
+        };
+        const parsedId = id ? parseInt(id) : null;
+        if (parsedId && idsEnviados.includes(parsedId)) {
+          await FormularioCampo.update(data, { where: { id: parsedId, formularioId } });
+          return FormularioCampo.findByPk(parsedId);
+        }
+        return FormularioCampo.create(data);
+      })
     );
-    res.json({ success: true, data: creados });
+
+    res.json({ success: true, data: resultados });
   } catch (err) { next(err); }
+}
+
+function _resolverUrlArchivo(req) {
+  // Cloudinary storage: secure_url es una URL https://
+  if (req.file.secure_url) return req.file.secure_url;
+  // Disk storage: path es ruta absoluta → convertir a URL HTTP del servidor
+  const filename = req.file.filename;
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  return `${baseUrl}/uploads/solicitudes/${filename}`;
 }
 
 async function subirPlantilla(req, res, next) {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'Archivo requerido' });
 
+    const urlArchivo = _resolverUrlArchivo(req);
     // Detect AcroForm
-    const fileBuffer = await _descargarBuffer(req.file.path || req.file.secure_url || req.file.url);
+    const fileBuffer = await _descargarBuffer(req.file.path || urlArchivo);
     const pdfDoc = await PDFDocument.load(fileBuffer).catch(() => null);
     let tieneAcroform = false;
     let camposPDF = [];
@@ -146,7 +205,7 @@ async function subirPlantilla(req, res, next) {
     const plantilla = await FormularioPdfPlantilla.create({
       formularioId: req.params.id,
       nombre: req.file.originalname || req.file.filename,
-      urlCloudinary: req.file.secure_url || req.file.path,
+      urlCloudinary: urlArchivo,
       publicId: req.file.public_id || req.file.filename,
       tieneAcroform,
     });
@@ -166,24 +225,34 @@ async function _descargarBuffer(url) {
 
 async function guardarMapeos(req, res, next) {
   try {
-    const formulario = await Formulario.findByPk(req.params.id, {
-      include: [{ model: FormularioPdfPlantilla, as: 'plantillas', order: [['createdAt', 'DESC']], limit: 1 }],
+    const plantilla = await FormularioPdfPlantilla.findOne({
+      where: { formularioId: req.params.id },
+      order: [['created_at', 'DESC']],
     });
-    if (!formulario || !formulario.plantillas.length) {
+    if (!plantilla) {
       return res.status(404).json({ success: false, message: 'Sin plantilla activa' });
     }
-    const plantilla = formulario.plantillas[0];
-    const { mapeos } = req.body; // [{ campoId, pdfCampoNombre?, pagina?, posX?, posY?, ancho? }]
+    const { mapeos } = req.body;
+
+    // Validar antes de destruir para no perder datos si hay error
+    if (mapeos && mapeos.length) {
+      const sinCampoId = mapeos.filter(m => m.campoId == null).length;
+      if (sinCampoId > 0) {
+        return res.status(400).json({ success: false, message: `${sinCampoId} mapeo(s) sin campoId — guardá los campos primero` });
+      }
+    }
 
     await FormularioPdfMapeo.destroy({ where: { plantillaId: plantilla.id } });
     if (mapeos && mapeos.length) {
+      // Strip id para que MySQL asigne PKs nuevas sin conflictos
       await FormularioPdfMapeo.bulkCreate(
-        mapeos.map(m => ({ ...m, plantillaId: plantilla.id }))
+        mapeos.map(({ id: _id, plantillaId: _pid, ...m }) => ({ ...m, plantillaId: plantilla.id })),
       );
     }
     const actualizados = await FormularioPdfMapeo.findAll({ where: { plantillaId: plantilla.id } });
+    console.log(`[guardarMapeos] formularioId=${req.params.id} plantillaId=${plantilla.id} guardados=${actualizados.length}`);
     res.json({ success: true, data: actualizados });
   } catch (err) { next(err); }
 }
 
-module.exports = { listar, crear, obtener, obtenerPublico, listarDisponibles, actualizar, eliminar, guardarCampos, subirPlantilla, guardarMapeos };
+module.exports = { listar, crear, obtener, obtenerPublico, obtenerVista, listarDisponibles, actualizar, eliminar, guardarCampos, subirPlantilla, guardarMapeos };

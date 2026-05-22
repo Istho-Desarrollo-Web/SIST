@@ -23,6 +23,9 @@ FormularioPdfMapeo.init({
   posX: { type: DataTypes.FLOAT, field: 'pos_x' },
   posY: { type: DataTypes.FLOAT, field: 'pos_y' },
   ancho: { type: DataTypes.FLOAT },
+  alto: { type: DataTypes.FLOAT },
+  fontTamano: { type: DataTypes.INTEGER, field: 'font_tamano' },
+  formatoFecha: { type: DataTypes.STRING(20), field: 'formato_fecha' },
 }, {
   sequelize,
   modelName: 'FormularioPdfMapeo',

@@ -13,7 +13,7 @@ import { PrioridadBadge } from '../components/solicitudes/PrioridadBadge';
 import { SLAIndicator } from '../components/solicitudes/SLAIndicator';
 import { SolicitudModal } from '../components/solicitudes/SolicitudModal';
 import { SolicitudForm } from '../components/solicitudes/SolicitudForm';
-import { formatFecha } from '../utils/formatters';
+import { formatFecha, formatFechaCorta } from '../utils/formatters';
 import { ESTADOS_LABEL, PRIORIDADES_LABEL } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 
@@ -223,9 +223,11 @@ export function SolicitudesPage() {
                         {s.tipoSolicitud?.replace(/_/g, ' ')}
                       </p>
                       <div className="flex items-center justify-between gap-2">
-                        <EstadoBadge estado={s.estado} />
-                        <SLAIndicator porcentaje={s.porcentajeSLA} />
-                        <span className="text-xs text-slate-400 whitespace-nowrap">{formatFecha(s.fechaCreacion)}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <EstadoBadge estado={s.estado} />
+                          <SLAIndicator porcentaje={s.porcentajeSLA} />
+                        </div>
+                        <span className="text-xs text-slate-400 whitespace-nowrap shrink-0">{formatFechaCorta(s.fechaCreacion)}</span>
                       </div>
                     </div>
                   </div>

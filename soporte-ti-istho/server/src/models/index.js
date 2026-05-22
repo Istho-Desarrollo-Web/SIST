@@ -44,6 +44,9 @@ RespuestaCampo.belongsTo(FormularioRespuesta, { foreignKey: 'respuesta_id', as: 
 FormularioRespuesta.hasOne(FormularioPdfGenerado, { foreignKey: 'respuesta_id', as: 'pdf' });
 FormularioPdfGenerado.belongsTo(FormularioRespuesta, { foreignKey: 'respuesta_id', as: 'respuesta' });
 
+FormularioRespuesta.belongsTo(Usuario, { foreignKey: 'respondido_por', as: 'respondedor' });
+Usuario.hasMany(FormularioRespuesta, { foreignKey: 'respondido_por', as: 'respuestasFormularios' });
+
 module.exports = {
   sequelize,
   Usuario, Empleado, Solicitud, Auditoria,

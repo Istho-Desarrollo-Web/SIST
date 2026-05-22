@@ -106,7 +106,7 @@ export function FormulariosHomePage() {
                   <div>
                     <p className="text-sm text-slate-700 dark:text-slate-300">{r.formulario?.nombre}</p>
                     <p className="text-xs text-slate-400">
-                      {new Date(r.createdAt).toLocaleDateString('es-CO')}
+                      {(() => { const d = new Date(r.createdAt ?? r.created_at); return isNaN(d) ? '—' : d.toLocaleDateString('es-CO'); })()}
                     </p>
                   </div>
                   {r.pdf?.urlCloudinary && (

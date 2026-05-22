@@ -23,16 +23,33 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
   const [hoverCalif, setHoverCalif] = useState(0);
   const [comentarioCalif, setComentarioCalif] = useState(init.comentarioCalificacion || '');
   const [savingCalif, setSavingCalif] = useState(false);
+  const [showAsociar, setShowAsociar] = useState(false);
+  const [respuestas, setRespuestas] = useState([]);
+  const [loadingRespuestas, setLoadingRespuestas] = useState(false);
+  const [respuestaSeleccionada, setRespuestaSeleccionada] = useState('');
 
   const puedeGestionar = user.rol === 'admin' || user.rol === 'tecnico';
   const canAsociar = ['admin', 'tecnico'].includes(user?.rol);
 
-  const handleAsociarFormulario = async () => {
-    const respuestaId = window.prompt('ID de la respuesta de formulario:');
-    if (!respuestaId) return;
+  const abrirAsociar = async () => {
+    setShowAsociar(true);
+    setLoadingRespuestas(true);
     try {
-      await formulariosApi.asociarSolicitud(respuestaId, sol.id);
+      const res = await formulariosApi.listarPdfs();
+      setRespuestas(res.data.data);
+    } catch {
+      toast.error('Error al cargar formularios');
+    } finally {
+      setLoadingRespuestas(false);
+    }
+  };
+
+  const confirmarAsociar = async () => {
+    if (!respuestaSeleccionada) return;
+    try {
+      await formulariosApi.asociarSolicitud(respuestaSeleccionada, sol.id);
       toast.success('Formulario asociado');
+      setShowAsociar(false);
       if (onUpdate) onUpdate();
     } catch {
       toast.error('Error al asociar formulario');
@@ -103,11 +120,11 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
         </div>
 
         {/* Info */}
-        <div className="grid sm:grid-cols-2 gap-4 text-sm">
+        <div className="grid sm:grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Empleado</p>
             <p className="font-medium text-navy-500 dark:text-white">{sol.empleado?.nombreCompleto}</p>
-            <p className="text-slate-500 dark:text-slate-400">{sol.empleado?.area}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{sol.empleado?.area}</p>
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Técnico asignado</p>
@@ -158,7 +175,7 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
         </div>
 
         {/* Archivos adjuntos */}
-        {sol.archivosAdjuntos?.length > 0 && (
+        {Array.isArray(sol.archivosAdjuntos) && sol.archivosAdjuntos.length > 0 && (
           <ArchivoViewer archivos={sol.archivosAdjuntos} />
         )}
 
@@ -249,16 +266,17 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
             <textarea
               value={comentario}
               onChange={e => setComentario(e.target.value)}
               rows={2}
               placeholder="Agregar un comentario..."
-              className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50 resize-none"
             />
-            <Button variant="secondary" loading={saving} onClick={enviarComentario}>
+            <Button variant="secondary" size="sm" loading={saving} onClick={enviarComentario} className="self-end">
               <MessageSquare size={15} />
+              Comentar
             </Button>
           </div>
         </div>
@@ -290,12 +308,43 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
             <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">
               Formulario asociado
             </h4>
-            <button
-              onClick={handleAsociarFormulario}
-              className="text-xs px-3 py-1.5 rounded border border-dashed border-slate-300 dark:border-navy-500 text-slate-500 dark:text-slate-400 hover:border-orange-400 hover:text-orange-500 transition-colors"
-            >
-              + Asociar respuesta de formulario
-            </button>
+            {showAsociar ? (
+              <div className="space-y-2">
+                {loadingRespuestas ? (
+                  <p className="text-sm text-slate-400">Cargando respuestas...</p>
+                ) : respuestas.length === 0 ? (
+                  <p className="text-sm text-slate-400 italic">No hay respuestas de formularios disponibles.</p>
+                ) : (
+                  <Select
+                    value={respuestaSeleccionada}
+                    onChange={setRespuestaSeleccionada}
+                    placeholder="Seleccionar respuesta..."
+                    options={[
+                      { value: '', label: 'Seleccionar respuesta...' },
+                      ...respuestas.map(r => ({
+                        value: String(r.id),
+                        label: `${r.formulario?.nombre || 'Formulario'} — ${r.respondedor?.nombre || ''}`,
+                      })),
+                    ]}
+                  />
+                )}
+                <div className="flex gap-2">
+                  <Button variant="primary" size="sm" disabled={!respuestaSeleccionada || loadingRespuestas} onClick={confirmarAsociar}>
+                    Asociar
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => { setShowAsociar(false); setRespuestaSeleccionada(''); }}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={abrirAsociar}
+                className="text-xs px-3 py-1.5 rounded border border-dashed border-slate-300 dark:border-navy-500 text-slate-500 dark:text-slate-400 hover:border-orange-400 hover:text-orange-500 transition-colors"
+              >
+                + Asociar respuesta de formulario
+              </button>
+            )}
           </div>
         ))}
 

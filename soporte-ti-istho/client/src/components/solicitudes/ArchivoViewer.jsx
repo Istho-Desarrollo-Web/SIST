@@ -100,16 +100,17 @@ function PreviewPanel({ archivo, onClose }) {
 export function ArchivoViewer({ archivos }) {
   const [selected, setSelected] = useState(null);
 
-  if (!archivos?.length) return null;
+  const list = Array.isArray(archivos) ? archivos : [];
+  if (!list.length) return null;
 
   return (
     <>
       <div>
         <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">
-          Archivos adjuntos ({archivos.length})
+          Archivos adjuntos ({list.length})
         </p>
         <div className="space-y-1.5">
-          {archivos.map((a, i) => {
+          {list.map((a, i) => {
             const { Icon, color } = getIcon(a.nombre);
             return (
               <button

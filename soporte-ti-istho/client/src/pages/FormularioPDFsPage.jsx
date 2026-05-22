@@ -1,13 +1,24 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Download, Filter } from 'lucide-react';
+import { Download, Filter, Trash2 } from 'lucide-react';
 import { Select } from '../components/common/Select';
 import { Skeleton } from '../components/common/Skeleton';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { formulariosApi } from '../services/formulariosApi';
+import { useAuth } from '../context/AuthContext';
+
+function formatFecha(val) {
+  const d = new Date(val);
+  return isNaN(d) ? '—' : d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export function FormularioPDFsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'admin';
   const [pdfs, setPdfs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [eliminando, setEliminando] = useState(null);
+  const [confirmRow, setConfirmRow] = useState(null);
   const [filtroFormulario, setFiltroFormulario] = useState('');
   const [filtroFechaDesde, setFiltroFechaDesde] = useState('');
   const [filtroFechaHasta, setFiltroFechaHasta] = useState('');
@@ -26,11 +37,28 @@ export function FormularioPDFsPage() {
   ];
 
   const filtered = pdfs.filter((p) => {
+    const fecha = new Date(p.createdAt ?? p.created_at);
     if (filtroFormulario && String(p.formulario?.id) !== filtroFormulario) return false;
-    if (filtroFechaDesde && new Date(p.createdAt) < new Date(filtroFechaDesde)) return false;
-    if (filtroFechaHasta && new Date(p.createdAt) > new Date(filtroFechaHasta + 'T23:59:59')) return false;
+    if (filtroFechaDesde && fecha < new Date(filtroFechaDesde)) return false;
+    if (filtroFechaHasta && fecha > new Date(filtroFechaHasta + 'T23:59:59')) return false;
     return true;
   });
+
+  async function confirmarEliminar() {
+    if (!confirmRow) return;
+    const row = confirmRow;
+    setConfirmRow(null);
+    setEliminando(row.pdf?.id);
+    try {
+      await formulariosApi.eliminarPdf(row.pdf.id);
+      setPdfs((prev) => prev.filter((p) => p.pdf?.id !== row.pdf.id));
+      toast.success('PDF eliminado');
+    } catch {
+      toast.error('Error al eliminar el PDF');
+    } finally {
+      setEliminando(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -48,7 +76,6 @@ export function FormularioPDFsPage() {
         <span className="text-sm text-slate-500 dark:text-slate-400">{filtered.length} registros</span>
       </div>
 
-      {/* Filtros */}
       <div className="flex flex-wrap gap-3 mb-6 p-4 rounded-lg bg-slate-50 dark:bg-navy-800 border border-slate-200 dark:border-navy-600">
         <Filter className="w-4 h-4 text-slate-400 self-center shrink-0" />
         <Select
@@ -79,7 +106,6 @@ export function FormularioPDFsPage() {
         )}
       </div>
 
-      {/* Tabla */}
       {filtered.length === 0 ? (
         <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-sm">
           No hay PDFs generados{filtroFormulario || filtroFechaDesde ? ' con los filtros aplicados' : ''}.
@@ -105,22 +131,32 @@ export function FormularioPDFsPage() {
                     {r.respondedor?.nombre || 'Público'}
                   </td>
                   <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                    {new Date(r.createdAt).toLocaleDateString('es-CO', {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                    })}
+                    {formatFecha(r.createdAt ?? r.created_at)}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    {r.pdf?.urlCloudinary && (
-                      <a
-                        href={r.pdf.urlCloudinary}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-navy-50 dark:bg-navy-700 text-navy-600 dark:text-slate-300 hover:bg-navy-100 dark:hover:bg-navy-600 transition-colors"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        Descargar
-                      </a>
-                    )}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      {r.pdf?.urlCloudinary && (
+                        <a
+                          href={r.pdf.urlCloudinary}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-navy-50 dark:bg-navy-700 text-navy-600 dark:text-slate-300 hover:bg-navy-100 dark:hover:bg-navy-600 transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Descargar
+                        </a>
+                      )}
+                      {isAdmin && r.pdf?.id && (
+                        <button
+                          onClick={() => setConfirmRow(r)}
+                          disabled={eliminando === r.pdf.id}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          {eliminando === r.pdf.id ? 'Eliminando…' : 'Eliminar'}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -128,6 +164,15 @@ export function FormularioPDFsPage() {
           </table>
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(confirmRow)}
+        title="Eliminar PDF"
+        message={`¿Eliminar el PDF de "${confirmRow?.formulario?.nombre}"? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        variant="danger"
+        onConfirm={confirmarEliminar}
+        onCancel={() => setConfirmRow(null)}
+      />
     </div>
   );
 }

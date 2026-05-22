@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 require('dotenv').config();
 
 const routes = require('./routes');
@@ -40,6 +41,7 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api', routes);
 
 app.use(errorHandler);

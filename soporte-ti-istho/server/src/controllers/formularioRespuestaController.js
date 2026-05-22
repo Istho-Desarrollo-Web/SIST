@@ -1,3 +1,6 @@
+const path = require('path');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 const cloudinary = require('../config/cloudinary');
 const {
   Formulario, FormularioCampo, FormularioPdfPlantilla,
@@ -16,8 +19,7 @@ async function responder(req, res, next) {
         { model: FormularioCampo, as: 'campos' },
         {
           model: FormularioPdfPlantilla, as: 'plantillas',
-          include: [{ model: FormularioPdfMapeo, as: 'mapeos' }],
-          order: [['createdAt', 'DESC']],
+          order: [['created_at', 'DESC']],
           limit: 1,
         },
       ],
@@ -25,6 +27,14 @@ async function responder(req, res, next) {
     if (!formulario) return res.status(404).json({ success: false, message: 'Formulario no encontrado' });
     if (formulario.acceso === 'autenticado' && !req.user) {
       return res.status(401).json({ success: false, message: 'Autenticación requerida' });
+    }
+
+    // Buscar mapeos en query separada para evitar el LIMIT 1 anidado de Sequelize
+    let plantillaMapeos = [];
+    if (formulario.plantillas && formulario.plantillas.length > 0) {
+      plantillaMapeos = await FormularioPdfMapeo.findAll({
+        where: { plantillaId: formulario.plantillas[0].id },
+      });
     }
 
     const respuesta = await FormularioRespuesta.create({
@@ -42,7 +52,7 @@ async function responder(req, res, next) {
       if (valor !== undefined && valor !== null && valor !== '') {
         // If base64 (firma), upload to Cloudinary
         if (campo.tipo === 'firma' && typeof valor === 'string' && valor.startsWith('data:image/')) {
-          const uploadResult = await _uploadBase64(valor, `sist-firmas/${respuesta.id}`);
+          const uploadResult = await _uploadBase64(valor, `sist-firmas/${respuesta.id}`, req);
           respuestaCamposData.push({
             respuestaId: respuesta.id,
             campoId: campo.id,
@@ -66,8 +76,13 @@ async function responder(req, res, next) {
     if (formulario.plantillas && formulario.plantillas.length > 0) {
       const plantilla = formulario.plantillas[0];
       try {
-        const pdfBuffer = await llenarPDF(plantilla, plantilla.mapeos, respuestaCampos);
-        const uploadResult = await _uploadBuffer(pdfBuffer, `sist-formularios-generados/respuesta-${respuesta.id}`);
+        const pdfBuffer = await llenarPDF(plantilla, plantillaMapeos, respuestaCampos);
+        const count = await FormularioPdfGenerado.count({
+          include: [{ model: FormularioRespuesta, as: 'respuesta', where: { formularioId: formulario.id }, required: true }],
+        });
+        const nombreBase = formulario.nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        const publicIdBase = `sist-formularios-generados/${nombreBase}_${count + 1}`;
+        const uploadResult = await _uploadBuffer(pdfBuffer, publicIdBase, req);
         pdfGenerado = await FormularioPdfGenerado.create({
           respuestaId: respuesta.id,
           plantillaId: plantilla.id,
@@ -96,23 +111,52 @@ async function responder(req, res, next) {
   } catch (err) { next(err); }
 }
 
-async function _uploadBase64(base64String, folder) {
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload(base64String, { folder, resource_type: 'image' }, (err, result) => {
-      if (err) return reject(err);
-      resolve(result);
-    });
-  });
+const HAS_CLOUDINARY = !!(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
+function _baseUrl(req) {
+  return `${req.protocol}://${req.get('host')}`;
 }
 
-async function _uploadBuffer(buffer, publicIdPrefix) {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: 'sist-formularios-generados', resource_type: 'raw', format: 'pdf', public_id: publicIdPrefix },
-      (err, result) => { if (err) return reject(err); resolve(result); }
-    );
-    stream.end(buffer);
-  });
+function _saveLocal(buffer, subdir, ext, name) {
+  const dir = path.join(__dirname, '../../uploads', subdir);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const filename = `${name || uuidv4()}${ext}`;
+  fs.writeFileSync(path.join(dir, filename), buffer);
+  return { filename, localPath: `/uploads/${subdir}/${filename}` };
+}
+
+async function _uploadBase64(base64String, folder, req) {
+  if (HAS_CLOUDINARY) {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader.upload(base64String, { folder, resource_type: 'image' }, (err, result) => {
+        if (err) return reject(err);
+        resolve(result);
+      });
+    });
+  }
+  const data = base64String.replace(/^data:image\/\w+;base64,/, '');
+  const buffer = Buffer.from(data, 'base64');
+  const { filename, localPath } = _saveLocal(buffer, 'firmas', '.png');
+  return { secure_url: `${_baseUrl(req)}${localPath}`, public_id: filename };
+}
+
+async function _uploadBuffer(buffer, publicIdPrefix, req) {
+  if (HAS_CLOUDINARY) {
+    return new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'sist-formularios-generados', resource_type: 'raw', format: 'pdf', public_id: publicIdPrefix },
+        (err, result) => { if (err) return reject(err); resolve(result); }
+      );
+      stream.end(buffer);
+    });
+  }
+  const safeName = publicIdPrefix.split('/').pop();
+  const { filename, localPath } = _saveLocal(buffer, 'formularios', '.pdf', safeName);
+  return { secure_url: `${_baseUrl(req)}${localPath}`, public_id: safeName };
 }
 
 async function listarPdfs(req, res, next) {
@@ -124,12 +168,36 @@ async function listarPdfs(req, res, next) {
       where: { ...where, estado: 'completado' },
       include: [
         { model: Formulario, as: 'formulario', attributes: ['id', 'nombre'] },
-        { model: FormularioPdfGenerado, as: 'pdf', attributes: ['id', 'urlCloudinary', 'createdAt'] },
-        { model: Usuario, as: 'respondedor', attributes: ['id', 'nombre'], foreignKey: 'respondido_por' },
+        { model: FormularioPdfGenerado, as: 'pdf' },
+        { model: Usuario, as: 'respondedor', attributes: ['id', 'nombre'] },
       ],
-      order: [['createdAt', 'DESC']],
+      order: [['created_at', 'DESC']],
     });
     res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+}
+
+async function eliminarPdf(req, res, next) {
+  try {
+    const pdf = await FormularioPdfGenerado.findByPk(req.params.id, {
+      include: [{ model: FormularioRespuesta, as: 'respuesta' }],
+    });
+    if (!pdf) return res.status(404).json({ success: false, message: 'PDF no encontrado' });
+    if (req.user.rol === ROLES.USUARIO && pdf.respuesta?.respondidoPor !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Sin permiso' });
+    }
+    if (HAS_CLOUDINARY && pdf.publicId) {
+      try {
+        await new Promise((resolve, reject) => {
+          cloudinary.uploader.destroy(pdf.publicId, { resource_type: 'raw' }, (err, r) => {
+            if (err) return reject(err);
+            resolve(r);
+          });
+        });
+      } catch { /* continuar aunque falle la eliminación en Cloudinary */ }
+    }
+    await pdf.destroy();
+    res.json({ success: true });
   } catch (err) { next(err); }
 }
 
@@ -158,4 +226,4 @@ async function asociarSolicitud(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { responder, listarPdfs, descargarPdf, asociarSolicitud };
+module.exports = { responder, listarPdfs, descargarPdf, eliminarPdf, asociarSolicitud };

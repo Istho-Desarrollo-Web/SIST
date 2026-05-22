@@ -15,6 +15,17 @@ const TIPO_LABELS = {
   firma: 'Firma',
 };
 
+function toArray(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* noop */ }
+  }
+  return [];
+}
+
 export function FormularioRenderer({ campos = [], valores = {}, onChange, disabled }) {
   function handleChange(campoId, value) {
     if (onChange) onChange({ ...valores, [campoId]: value });
@@ -104,9 +115,7 @@ function CampoInput({ campo, value, onChange, disabled }) {
   }
 
   if (campo.tipo === 'seleccion_unica') {
-    const opciones = Array.isArray(campo.opciones)
-      ? campo.opciones.map((o) => ({ value: o, label: o }))
-      : [];
+    const opciones = toArray(campo.opciones).map((o) => ({ value: o, label: o }));
     return (
       <div>
         {label}
@@ -122,7 +131,7 @@ function CampoInput({ campo, value, onChange, disabled }) {
   }
 
   if (campo.tipo === 'seleccion_multiple') {
-    const opciones = Array.isArray(campo.opciones) ? campo.opciones : [];
+    const opciones = toArray(campo.opciones);
     const selected = Array.isArray(value) ? value : [];
     return (
       <div>
@@ -170,6 +179,7 @@ function CampoInput({ campo, value, onChange, disabled }) {
         {label}
         {campo.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{campo.descripcion}</p>}
         <FirmaCanvas
+          value={value}
           onChange={onChange}
           disabled={disabled}
         />

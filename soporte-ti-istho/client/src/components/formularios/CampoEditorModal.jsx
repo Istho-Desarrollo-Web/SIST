@@ -36,7 +36,11 @@ export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial }) {
   useEffect(() => {
     if (campoInicial) {
       reset(campoInicial);
-      setOpciones(campoInicial.opciones || []);
+      const raw = campoInicial.opciones;
+      let parsed = [];
+      if (Array.isArray(raw)) parsed = raw;
+      else if (typeof raw === 'string') { try { const r = JSON.parse(raw); if (Array.isArray(r)) parsed = r; } catch { /* noop */ } }
+      setOpciones(parsed);
     } else {
       reset({ tipo: 'texto_corto', etiqueta: '', descripcion: '', placeholder: '', requerido: false, opciones: [] });
       setOpciones([]);
@@ -66,7 +70,7 @@ export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial }) {
   const necesitaOpciones = ['seleccion_unica', 'seleccion_multiple'].includes(tipo);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={campoInicial ? 'Editar campo' : 'Nuevo campo'}>
+    <Modal open={isOpen} onClose={onClose} title={campoInicial ? 'Editar campo' : 'Nuevo campo'}>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <Controller
           name="tipo"

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Save, ArrowLeft } from 'lucide-react';
+import { Save, ArrowLeft, X, CheckCircle2, FileText, Settings, MapPin, Users, Lock } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Select } from '../components/common/Select';
@@ -14,6 +14,7 @@ const TABS = [
   { id: 'campos', label: 'Campos' },
   { id: 'pdf', label: 'PDF & Mapeo' },
   { id: 'config', label: 'Configuración' },
+  { id: 'resumen', label: 'Resumen' },
 ];
 
 const ACCESO_OPTIONS = [
@@ -32,6 +33,7 @@ export function FormularioBuilderPage() {
 
   const [campos, setCampos] = useState([]);
   const [config, setConfig] = useState({ nombre: '', descripcion: '', acceso: 'autenticado', activo: true });
+  const [pdfFiles, setPdfFiles] = useState([]);
   const [plantilla, setPlantilla] = useState(null);
   const [camposPDF, setCamposPDF] = useState([]);
   const [mapeoInicial, setMapeoInicial] = useState([]);
@@ -55,20 +57,21 @@ export function FormularioBuilderPage() {
   }, [id, isEditing]);
 
   async function guardarConfig() {
+    if (!config.nombre.trim()) { toast.error('El nombre es obligatorio'); return; }
     setSaving(true);
     try {
-      if (formularioId) {
-        await formulariosApi.actualizar(formularioId, config);
-        toast.success('Configuración guardada');
+      let fId = formularioId;
+      if (fId) {
+        await formulariosApi.actualizar(fId, config);
       } else {
         const res = await formulariosApi.crear(config);
-        const newId = res.data.data.id;
-        setFormularioId(newId);
-        navigate(`/formularios/${newId}/editar`, { replace: true });
-        toast.success('Formulario creado');
+        fId = res.data.data.id;
+        setFormularioId(fId);
       }
+      toast.success(formularioId ? 'Formulario guardado' : 'Formulario creado');
+      navigate('/formularios');
     } catch {
-      toast.error('Error al guardar configuración');
+      toast.error('Error al guardar');
     } finally {
       setSaving(false);
     }
@@ -78,7 +81,10 @@ export function FormularioBuilderPage() {
     if (!formularioId) { toast.error('Guarda la configuración primero'); return; }
     setSaving(true);
     try {
-      await formulariosApi.guardarCampos(formularioId, campos);
+      const res = await formulariosApi.guardarCampos(formularioId, campos);
+      const savedCampos = res.data.data;
+      // Merge los IDs de la BD de vuelta al estado local para que el PDFMapper los tenga disponibles
+      setCampos(prev => prev.map((c, i) => ({ ...c, id: savedCampos[i]?.id ?? c.id })));
       toast.success('Campos guardados');
     } catch {
       toast.error('Error al guardar campos');
@@ -87,15 +93,35 @@ export function FormularioBuilderPage() {
     }
   }
 
-  async function handleSubirPlantilla(file) {
-    if (!formularioId) { toast.error('Guarda la configuración primero'); return; }
+  async function handleSubirPlantilla(newFiles) {
+    const added = newFiles.find(f => !pdfFiles.some(p => p.name === f.name && p.size === f.size));
+    setPdfFiles(newFiles.slice(0, 1));
+    if (!added) return;
+
+    let fId = formularioId;
+    if (!fId) {
+      try {
+        const res = await formulariosApi.crear({
+          ...config,
+          nombre: config.nombre.trim() || 'Nuevo formulario',
+        });
+        fId = res.data.data.id;
+        setFormularioId(fId);
+        navigate(`/formularios/${fId}/editar`, { replace: true });
+      } catch {
+        toast.error('Error al crear formulario');
+        return;
+      }
+    }
+
     const fd = new FormData();
-    fd.append('archivo', file);
+    fd.append('archivo', added);
     try {
-      const res = await formulariosApi.subirPlantilla(formularioId, fd);
+      const res = await formulariosApi.subirPlantilla(fId, fd);
       setPlantilla(res.data.data.plantilla);
       setCamposPDF(res.data.data.camposPDF || []);
       setMapeoInicial([]);
+      setPdfFiles([]);
       toast.success('Plantilla subida');
     } catch {
       toast.error('Error al subir plantilla');
@@ -106,6 +132,7 @@ export function FormularioBuilderPage() {
     if (!formularioId) return;
     try {
       await formulariosApi.guardarMapeos(formularioId, mapeos);
+      setMapeoInicial(mapeos);
       toast.success('Mapeo guardado');
     } catch {
       toast.error('Error al guardar mapeo');
@@ -174,24 +201,33 @@ export function FormularioBuilderPage() {
               Plantilla PDF
             </h3>
             {plantilla && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                Actual:{' '}
-                <a
-                  href={plantilla.urlCloudinary}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-orange-500 hover:underline"
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 flex-1 min-w-0">
+                  Actual:{' '}
+                  <a
+                    href={plantilla.urlCloudinary}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orange-500 hover:underline"
+                  >
+                    {plantilla.nombre}
+                  </a>
+                  {plantilla.tieneAcroform && ' · AcroForm detectado'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setPlantilla(null); setCamposPDF([]); setMapeoInicial([]); }}
+                  className="shrink-0 p-1 rounded hover:bg-slate-200 dark:hover:bg-navy-600 text-slate-400 hover:text-red-500 transition-colors"
+                  title="Quitar plantilla"
                 >
-                  {plantilla.nombre}
-                </a>
-                {plantilla.tieneAcroform && ' · AcroForm detectado'}
-              </p>
+                  <X size={14} />
+                </button>
+              </div>
             )}
             <FileUploadZone
-              accept="application/pdf"
-              maxFiles={1}
-              onFileSelect={handleSubirPlantilla}
-              label={plantilla ? 'Reemplazar plantilla' : 'Subir plantilla PDF'}
+              files={pdfFiles}
+              onChange={handleSubirPlantilla}
+              accept=".pdf"
             />
           </div>
           <PDFMapper
@@ -201,6 +237,110 @@ export function FormularioBuilderPage() {
             camposPDF={camposPDF}
             onSave={handleGuardarMapeos}
           />
+        </div>
+      )}
+
+      {/* Tab: Resumen */}
+      {tab === 'resumen' && (
+        <div className="flex flex-col gap-5">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Revisá todo antes de guardar. Podés volver a cualquier pestaña para hacer cambios.
+          </p>
+
+          {/* Config */}
+          <div className="rounded-xl border border-slate-200 dark:border-navy-600 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-navy-700 border-b border-slate-200 dark:border-navy-600">
+              <Settings className="w-4 h-4 text-orange-500" />
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Configuración</span>
+            </div>
+            <div className="px-4 py-4 grid sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-slate-400 uppercase font-semibold mb-0.5">Nombre</p>
+                <p className="text-slate-800 dark:text-slate-100">{config.nombre || <span className="text-red-400 italic">Sin nombre</span>}</p>
+              </div>
+              {config.descripcion && (
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-slate-400 uppercase font-semibold mb-0.5">Descripción</p>
+                  <p className="text-slate-600 dark:text-slate-300">{config.descripcion}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-slate-400 uppercase font-semibold mb-0.5">Acceso</p>
+                <div className="flex items-center gap-1.5">
+                  {config.acceso === 'publico'
+                    ? <><Users className="w-3.5 h-3.5 text-cgreen-500" /><span className="text-cgreen-600 dark:text-cgreen-400">Público</span></>
+                    : <><Lock className="w-3.5 h-3.5 text-orange-500" /><span className="text-orange-600 dark:text-orange-400">Solo autenticados</span></>}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 uppercase font-semibold mb-0.5">Estado</p>
+                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${config.activo ? 'bg-cgreen-100 dark:bg-cgreen-900/30 text-cgreen-700 dark:text-cgreen-400' : 'bg-slate-100 dark:bg-navy-600 text-slate-500'}`}>
+                  {config.activo ? 'Activo' : 'Inactivo'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Campos */}
+          <div className="rounded-xl border border-slate-200 dark:border-navy-600 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-navy-700 border-b border-slate-200 dark:border-navy-600">
+              <FileText className="w-4 h-4 text-orange-500" />
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Campos <span className="text-slate-400 font-normal">({campos.length})</span>
+              </span>
+            </div>
+            {campos.length === 0 ? (
+              <p className="px-4 py-4 text-sm text-slate-400 italic">Sin campos definidos</p>
+            ) : (
+              <ul className="divide-y divide-slate-100 dark:divide-navy-600">
+                {campos.map((c, i) => (
+                  <li key={c.id || i} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <span className="text-slate-700 dark:text-slate-200">{c.etiqueta || c.nombre || `Campo ${i + 1}`}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 dark:text-slate-500 capitalize">{c.tipo}</span>
+                      {c.requerido && <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded">Requerido</span>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Plantilla PDF */}
+          <div className="rounded-xl border border-slate-200 dark:border-navy-600 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-navy-700 border-b border-slate-200 dark:border-navy-600">
+              <MapPin className="w-4 h-4 text-orange-500" />
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Plantilla PDF & Mapeo</span>
+            </div>
+            <div className="px-4 py-4 text-sm">
+              {plantilla ? (
+                <div className="flex flex-col gap-1">
+                  <p className="text-slate-700 dark:text-slate-200">
+                    <span className="text-slate-400">Archivo: </span>
+                    <a href={plantilla.urlCloudinary} target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">{plantilla.nombre}</a>
+                    {plantilla.tieneAcroform && <span className="ml-2 text-xs bg-navy-100 dark:bg-navy-600 text-navy-600 dark:text-slate-300 px-1.5 py-0.5 rounded">AcroForm</span>}
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    {mapeoInicial.length} campo{mapeoInicial.length !== 1 ? 's' : ''} mapeado{mapeoInicial.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-slate-400 italic">Sin plantilla PDF configurada</p>
+              )}
+            </div>
+          </div>
+
+          {/* Botón guardar todo */}
+          <div className="flex justify-end pt-2">
+            <Button
+              onClick={guardarConfig}
+              disabled={saving || !config.nombre.trim()}
+              className="gap-2 px-8"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              {saving ? 'Guardando...' : (formularioId ? 'Confirmar y guardar' : 'Confirmar y crear')}
+            </Button>
+          </div>
         </div>
       )}
 

@@ -4,6 +4,12 @@ import { Upload, X, FileText, ImageIcon, Film, Music, FileSpreadsheet } from 'lu
 const MAX_FILES = 3;
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
+function isAccepted(file, accept) {
+  const parts = accept.split(',').map((s) => s.trim().toLowerCase());
+  const name = file.name.toLowerCase();
+  return parts.some((p) => (p.startsWith('.') ? name.endsWith(p) : file.type.toLowerCase() === p));
+}
+
 function getFileIcon(name) {
   const ext = name.split('.').pop().toLowerCase();
   if (['jpg','jpeg','png','gif','webp'].includes(ext)) return { Icon: ImageIcon, color: 'text-blue-500' };
@@ -13,15 +19,18 @@ function getFileIcon(name) {
   return { Icon: FileText, color: 'text-orange-500' };
 }
 
-export function FileUploadZone({ files, onChange }) {
+export function FileUploadZone({ files, onChange, accept }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
+
+  const inputAccept = accept || '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.mp4,.webm,.avi,.mov,.mp3,.wav,.ogg,.m4a';
 
   const addFiles = (incoming) => {
     const toAdd = [];
     for (const f of incoming) {
       if (files.length + toAdd.length >= MAX_FILES) break;
       if (f.size > MAX_SIZE_BYTES) continue;
+      if (accept && !isAccepted(f, accept)) continue;
       if (!files.some(e => e.name === f.name && e.size === f.size)) toAdd.push(f);
     }
     if (toAdd.length) onChange([...files, ...toAdd]);
@@ -53,7 +62,7 @@ export function FileUploadZone({ files, onChange }) {
           ref={inputRef}
           type="file"
           multiple
-          accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.mp4,.webm,.avi,.mov,.mp3,.wav,.ogg,.m4a"
+          accept={inputAccept}
           className="hidden"
           onChange={e => { addFiles(Array.from(e.target.files || [])); e.target.value = ''; }}
         />
@@ -65,7 +74,7 @@ export function FileUploadZone({ files, onChange }) {
           Máx. {MAX_FILES} archivos · 10 MB c/u
         </p>
         <p className="text-xs text-slate-400">
-          Word, Excel, PPT, PDF, Imagen, Video, Audio
+          {accept ? accept.toUpperCase().replace(/\./g, '').split(',').join(', ') : 'Word, Excel, PPT, PDF, Imagen, Video, Audio'}
         </p>
       </div>
 

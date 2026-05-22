@@ -1,17 +1,36 @@
 const multer = require('multer');
 const path = require('path');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const cloudinary = require('./cloudinary');
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => ({
-    folder: 'sist-solicitudes',
-    public_id: uuidv4(),
-    resource_type: 'auto',
-  }),
-});
+const hasCloudinary = process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+
+let storage;
+
+if (hasCloudinary) {
+  const { CloudinaryStorage } = require('multer-storage-cloudinary');
+  const cloudinary = require('./cloudinary');
+  storage = new CloudinaryStorage({
+    cloudinary,
+    params: async (req, file) => ({
+      folder: 'sist-solicitudes',
+      public_id: uuidv4(),
+      resource_type: 'auto',
+    }),
+  });
+} else {
+  const uploadDir = path.join(__dirname, '../../uploads/solicitudes');
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+  storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      const name = `${uuidv4()}${ext}`;
+      cb(null, name);
+    },
+  });
+}
 
 const ALLOWED_EXTS = new Set([
   'jpg','jpeg','png','gif','webp',

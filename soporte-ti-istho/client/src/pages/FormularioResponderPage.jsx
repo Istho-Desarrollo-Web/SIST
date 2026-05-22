@@ -18,13 +18,10 @@ export function FormularioResponderPage() {
   const [successData, setSuccessData] = useState(null);
 
   useEffect(() => {
-    const fetchFn = user
-      ? () => formulariosApi.obtenerPublico(id).catch(() => formulariosApi.obtener(id))
-      : () => formulariosApi.obtenerPublico(id);
-    fetchFn()
+    formulariosApi.obtenerParaResponder(id)
       .then((res) => { setFormulario(res.data.data); setLoading(false); })
       .catch(() => { toast.error('Formulario no disponible'); setLoading(false); });
-  }, [id, user]);
+  }, [id]);
 
   function validar() {
     if (!formulario) return false;
@@ -45,6 +42,7 @@ export function FormularioResponderPage() {
     try {
       const res = await formulariosApi.responder(id, { campos: valores });
       const { pdfGenerado } = res.data.data;
+      setValores({});
       setSuccessData({ pdfUrl: pdfGenerado?.urlCloudinary, formularioNombre: formulario?.nombre });
     } catch {
       toast.error('Error al enviar el formulario');

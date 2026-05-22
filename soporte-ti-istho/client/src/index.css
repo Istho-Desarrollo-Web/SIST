@@ -87,10 +87,21 @@ html.theme-transitioning *::after {
 
 * { box-sizing: border-box; }
 
+html {
+  background-color: #f8fafc; /* slate-50 — fallback claro */
+  overflow-x: hidden;
+}
+
+html.dark {
+  background-color: #0f1629; /* navy-900 — fallback oscuro */
+}
+
 body {
   font-family: 'Montserrat', sans-serif;
   margin: 0;
   padding: 0;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 /* Scrollbar personalizado */

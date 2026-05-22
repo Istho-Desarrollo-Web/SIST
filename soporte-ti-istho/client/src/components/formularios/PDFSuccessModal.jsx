@@ -8,7 +8,7 @@ export function PDFSuccessModal({ isOpen, onClose, pdfUrl, formularioNombre }) {
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="">
+    <Modal open={isOpen} onClose={onClose} title="">
       <div className="flex flex-col items-center gap-4 py-4 text-center">
         <div className="w-16 h-16 rounded-full bg-cgreen-100 dark:bg-cgreen-900/30 flex items-center justify-center">
           <CheckCircle className="w-8 h-8 text-cgreen-500" />
