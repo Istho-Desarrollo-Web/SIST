@@ -1,0 +1,44 @@
+const router = require('express').Router();
+const multerUpload = require('../config/multer');
+const auth = require('../middleware/auth');
+const authorize = require('../middleware/authorize');
+const fc = require('../controllers/formularioController');
+const fr = require('../controllers/formularioRespuestaController');
+const { ROLES } = require('../utils/constants');
+
+// Rutas estáticas primero
+router.get('/disponibles', (req, res, next) => {
+  // intenta auth pero no requiere
+  auth(req, res, () => next());
+}, fc.listarDisponibles);
+
+router.get('/pdfs', auth, fr.listarPdfs);
+
+// CRUD formularios
+router.get('/', auth, authorize([ROLES.ADMIN, ROLES.TECNICO]), fc.listar);
+router.post('/', auth, authorize([ROLES.ADMIN, ROLES.TECNICO]), fc.crear);
+router.get('/:id', auth, authorize([ROLES.ADMIN, ROLES.TECNICO]), fc.obtener);
+router.get('/:id/publica', fc.obtenerPublico);
+router.put('/:id', auth, authorize([ROLES.ADMIN, ROLES.TECNICO]), fc.actualizar);
+router.delete('/:id', auth, authorize([ROLES.ADMIN]), fc.eliminar);
+
+// Campos
+router.post('/:id/campos', auth, authorize([ROLES.ADMIN, ROLES.TECNICO]), fc.guardarCampos);
+
+// Plantilla PDF
+router.post('/:id/plantilla', auth, authorize([ROLES.ADMIN, ROLES.TECNICO]),
+  multerUpload.single('archivo'), fc.subirPlantilla);
+
+// Mapeos
+router.post('/:id/mapeos', auth, authorize([ROLES.ADMIN, ROLES.TECNICO]), fc.guardarMapeos);
+
+// Responder formulario (puede ser sin auth si es público — el controller valida)
+router.post('/:id/responder', (req, res, next) => {
+  auth(req, res, () => next());
+}, fr.responder);
+
+// PDF de respuesta
+router.get('/respuestas/:id/pdf', auth, fr.descargarPdf);
+router.put('/respuestas/:id/solicitud', auth, authorize([ROLES.ADMIN, ROLES.TECNICO]), fr.asociarSolicitud);
+
+module.exports = router;
