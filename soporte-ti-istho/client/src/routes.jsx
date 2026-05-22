@@ -13,6 +13,10 @@ import { UsuariosPage } from './pages/UsuariosPage';
 import { ReportesPage } from './pages/ReportesPage';
 import { PerfilPage } from './pages/PerfilPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { FormulariosHomePage } from './pages/FormulariosHomePage';
+import { FormularioBuilderPage } from './pages/FormularioBuilderPage';
+import { FormularioResponderPage } from './pages/FormularioResponderPage';
+import { FormularioPDFsPage } from './pages/FormularioPDFsPage';
 
 function AppLayout({ children }) {
   return (
@@ -65,6 +69,36 @@ export function AppRoutes() {
       <Route path="/perfil" element={
         <ProtectedRoute>
           <AppLayout><PerfilPage /></AppLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* Formularios — Home (accesible para todos) */}
+      <Route path="/formularios" element={
+        <AppLayout><FormulariosHomePage /></AppLayout>
+      } />
+
+      {/* Formularios — Responder (accesible sin auth para formularios públicos) */}
+      <Route path="/formularios/:id/responder" element={
+        <AppLayout><FormularioResponderPage /></AppLayout>
+      } />
+
+      {/* Formularios — Builder (solo admin/tecnico) */}
+      <Route path="/formularios/nuevo" element={
+        <ProtectedRoute roles={['admin', 'tecnico']}>
+          <AppLayout><FormularioBuilderPage /></AppLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/formularios/:id/editar" element={
+        <ProtectedRoute roles={['admin', 'tecnico']}>
+          <AppLayout><FormularioBuilderPage /></AppLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* Formularios — PDFs (solo admin/tecnico) */}
+      <Route path="/formularios/pdfs" element={
+        <ProtectedRoute roles={['admin', 'tecnico']}>
+          <AppLayout><FormularioPDFsPage /></AppLayout>
         </ProtectedRoute>
       } />
 

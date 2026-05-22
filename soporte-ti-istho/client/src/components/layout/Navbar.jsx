@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Ticket, Users, UserCog, LogOut, Menu, X, ChevronDown, BarChart2, Bell, PlusCircle, RefreshCw, Check } from 'lucide-react';
+import { LayoutDashboard, Ticket, Users, UserCog, LogOut, Menu, X, ChevronDown, BarChart2, Bell, PlusCircle, RefreshCw, Check, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
 import { LogoSIST } from '../common/LogoSIST';
@@ -11,6 +11,7 @@ import { ESTADOS_LABEL } from '../../utils/constants';
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'tecnico'] },
   { to: '/solicitudes', label: 'Solicitudes', icon: Ticket, roles: ['admin', 'tecnico', 'usuario'] },
+  { to: '/formularios', label: 'Formularios', icon: FileText, roles: ['admin', 'tecnico', 'usuario'] },
   { to: '/empleados', label: 'Empleados', icon: Users, roles: ['admin', 'tecnico'] },
   { to: '/reportes', label: 'Reportes', icon: BarChart2, roles: ['admin', 'tecnico'] },
   { to: '/usuarios', label: 'Usuarios', icon: UserCog, roles: ['admin'] },

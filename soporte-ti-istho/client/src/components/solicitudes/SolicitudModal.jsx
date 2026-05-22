@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { MessageSquare, RefreshCw, Star } from 'lucide-react';
 import { solicitudService } from '../../services/solicitudService';
+import { formulariosApi } from '../../services/formulariosApi';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { Select } from '../common/Select';
@@ -24,6 +25,19 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
   const [savingCalif, setSavingCalif] = useState(false);
 
   const puedeGestionar = user.rol === 'admin' || user.rol === 'tecnico';
+  const canAsociar = ['admin', 'tecnico'].includes(user?.rol);
+
+  const handleAsociarFormulario = async () => {
+    const respuestaId = window.prompt('ID de la respuesta de formulario:');
+    if (!respuestaId) return;
+    try {
+      await formulariosApi.asociarSolicitud(respuestaId, sol.id);
+      toast.success('Formulario asociado');
+      if (onUpdate) onUpdate();
+    } catch {
+      toast.error('Error al asociar formulario');
+    }
+  };
 
   const cambiarEstado = async (estado) => {
     setSaving(true);
@@ -248,6 +262,42 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
             </Button>
           </div>
         </div>
+
+        {/* Formulario asociado */}
+        {(sol.pdf || sol.formularioRespuesta) ? (
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-navy-600">
+            <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">
+              Formulario asociado
+            </h4>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-700 dark:text-slate-300">
+                {(sol.formularioRespuesta?.formulario?.nombre) || 'Formulario adjunto'}
+              </span>
+              {(sol.pdf?.urlCloudinary || sol.formularioRespuesta?.pdf?.urlCloudinary) && (
+                <a
+                  href={sol.pdf?.urlCloudinary || sol.formularioRespuesta?.pdf?.urlCloudinary}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-2.5 py-1.5 rounded bg-navy-100 dark:bg-navy-700 text-navy-700 dark:text-slate-300 hover:bg-navy-200 dark:hover:bg-navy-600 flex items-center gap-1"
+                >
+                  Descargar PDF
+                </a>
+              )}
+            </div>
+          </div>
+        ) : (canAsociar && (
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-navy-600">
+            <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">
+              Formulario asociado
+            </h4>
+            <button
+              onClick={handleAsociarFormulario}
+              className="text-xs px-3 py-1.5 rounded border border-dashed border-slate-300 dark:border-navy-500 text-slate-500 dark:text-slate-400 hover:border-orange-400 hover:text-orange-500 transition-colors"
+            >
+              + Asociar respuesta de formulario
+            </button>
+          </div>
+        ))}
 
         <div className="flex justify-end pt-2">
           <Button variant="ghost" onClick={onClose}>Cerrar</Button>
