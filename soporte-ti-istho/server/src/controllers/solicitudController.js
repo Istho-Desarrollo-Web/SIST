@@ -328,6 +328,9 @@ async function bulkAction(req, res, next) {
 
     await sequelize.transaction(async (t) => {
       for (const sol of solicitudes) {
+        // Las solicitudes cerradas no se modifican en operaciones de lote
+        if (sol.estado === 'cerrado') continue;
+
         const anterior = sol.toJSON();
         const updates = {};
 
@@ -339,7 +342,9 @@ async function bulkAction(req, res, next) {
           if (valor === 'resuelto' || valor === 'cerrado') {
             updates.fechaResolucion = ahora;
             updates.tiempoResolucionMinutos = Math.round((ahora - new Date(sol.fechaCreacion)) / 60000);
-            updates.porcentajeSLA = calcularPorcentajeSLA(sol.fechaCreacion, sol.fechaLimiteResolucion, ahora);
+            if (sol.fechaLimiteResolucion) {
+              updates.porcentajeSLA = calcularPorcentajeSLA(sol.fechaCreacion, sol.fechaLimiteResolucion, ahora);
+            }
           }
         } else if (accion === 'asignar_tecnico') {
           updates.tecnicoAsignado = tecnicoId;
