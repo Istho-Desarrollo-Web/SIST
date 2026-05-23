@@ -55,7 +55,7 @@
   --status-pendiente: #8B5CF6;
   --status-resuelto: #4C8C2B;
   --status-cerrado: #64748B;
-  --status-cancelado: #DC2626;
+  --status-rechazado: #DC2626;
 }
 
 /* Transición suave al cambiar tema */

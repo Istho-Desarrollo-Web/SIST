@@ -46,7 +46,11 @@ router.patch('/bulk', authorize('admin', 'tecnico'), [
 
 router.put('/:id', authorize('admin', 'tecnico'), c.actualizar);
 router.put('/:id/estado', authorize('admin', 'tecnico'), [
-  body('estado').isIn(['abierto', 'en_proceso', 'pendiente_usuario', 'pendiente_externo', 'resuelto', 'cerrado', 'cancelado']),
+  body('estado').isIn([
+    'abierto', 'en_analisis', 'en_proceso',
+    'pendiente_usuario', 'pendiente_externo',
+    'resuelto', 'cerrado', 'rechazado'
+  ]),
   validate,
 ], c.cambiarEstado);
 

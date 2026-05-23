@@ -4,8 +4,14 @@ const { Solicitud, Empleado, Usuario } = require('../models');
 
 const PRIORIDAD_LABEL = { critica: 'Crítica', alta: 'Alta', media: 'Media', baja: 'Baja' };
 const ESTADO_LABEL = {
-  abierto: 'Abierto', en_proceso: 'En proceso', pendiente_usuario: 'Pendiente usuario',
-  pendiente_externo: 'Pendiente externo', resuelto: 'Resuelto', cerrado: 'Cerrado', cancelado: 'Cancelado',
+  abierto:           'Abierto',
+  en_analisis:       'En Análisis',
+  en_proceso:        'En Proceso',
+  pendiente_usuario: 'Pendiente Usuario',
+  pendiente_externo: 'Pendiente Externo',
+  resuelto:          'Resuelto',
+  cerrado:           'Cerrado',
+  rechazado:         'Rechazado',
 };
 
 function buildWhere(query) {
@@ -91,7 +97,7 @@ async function exportarExcel(req, res, next) {
       pendiente_externo: { bg: 'FFF3E8FF', font: 'FF7C3AED' },
       resuelto:          { bg: 'FFDCFCE7', font: 'FF166534' },
       cerrado:           { bg: 'FFF1F5F9', font: 'FF475569' },
-      cancelado:         { bg: 'FFFEE2E2', font: 'FFB91C1C' },
+      rechazado:         { bg: 'FFFEE2E2', font: 'FFB91C1C' },
     };
 
     // Anchos de columna

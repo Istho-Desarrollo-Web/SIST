@@ -13,7 +13,7 @@ async function resumen(req, res, next) {
       Solicitud.count({ where: { estado: ['resuelto', 'cerrado'] } }),
       Solicitud.count({
         where: {
-          estado: { [Op.notIn]: ['resuelto', 'cerrado', 'cancelado'] },
+          estado: { [Op.notIn]: ['resuelto', 'cerrado', 'rechazado'] },
           fechaLimiteResolucion: { [Op.lt]: ahora },
         },
       }),
@@ -44,12 +44,12 @@ async function porTecnico(req, res, next) {
 
     const stats = await Promise.all(tecnicos.map(async (t) => {
       const [asignados, resueltos, vencidos] = await Promise.all([
-        Solicitud.count({ where: { tecnicoAsignado: t.id, estado: { [Op.notIn]: ['cerrado', 'cancelado'] } } }),
+        Solicitud.count({ where: { tecnicoAsignado: t.id, estado: { [Op.notIn]: ['cerrado', 'rechazado'] } } }),
         Solicitud.count({ where: { tecnicoAsignado: t.id, estado: ['resuelto', 'cerrado'] } }),
         Solicitud.count({
           where: {
             tecnicoAsignado: t.id,
-            estado: { [Op.notIn]: ['resuelto', 'cerrado', 'cancelado'] },
+            estado: { [Op.notIn]: ['resuelto', 'cerrado', 'rechazado'] },
             fechaLimiteResolucion: { [Op.lt]: new Date() },
           },
         }),
