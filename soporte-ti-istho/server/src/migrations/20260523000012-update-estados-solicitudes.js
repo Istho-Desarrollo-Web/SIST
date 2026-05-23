@@ -47,6 +47,11 @@ module.exports = {
       "UPDATE solicitudes SET estado = 'cancelado' WHERE estado = 'rechazado'"
     );
 
+    // Migrar filas en_analisis → en_proceso antes de quitar el valor del ENUM
+    await queryInterface.sequelize.query(
+      "UPDATE solicitudes SET estado = 'en_proceso' WHERE estado = 'en_analisis'"
+    );
+
     // Paso 3: limpiar ENUM — quitar en_analisis y rechazado
     await queryInterface.changeColumn('solicitudes', 'estado', {
       type: Sequelize.ENUM(
