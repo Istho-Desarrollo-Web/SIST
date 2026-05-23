@@ -92,6 +92,7 @@ async function exportarExcel(req, res, next) {
     };
     const ESTADO_COLORS = {
       abierto:           { bg: 'FFDBEAFE', font: 'FF1D4ED8' },
+      en_analisis:       { bg: 'FFE0F7FA', font: 'FF0E7490' },
       en_proceso:        { bg: 'FFFEF3C7', font: 'FFB45309' },
       pendiente_usuario: { bg: 'FFF3E8FF', font: 'FF7C3AED' },
       pendiente_externo: { bg: 'FFF3E8FF', font: 'FF7C3AED' },
