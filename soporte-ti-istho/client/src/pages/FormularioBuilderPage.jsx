@@ -11,9 +11,9 @@ import { PDFMapper } from '../components/formularios/PDFMapper';
 import { formulariosApi } from '../services/formulariosApi';
 
 const TABS = [
+  { id: 'config', label: 'Configuración' },
   { id: 'campos', label: 'Campos' },
   { id: 'pdf', label: 'PDF & Mapeo' },
-  { id: 'config', label: 'Configuración' },
   { id: 'resumen', label: 'Resumen' },
 ];
 
@@ -27,7 +27,7 @@ export function FormularioBuilderPage() {
   const navigate = useNavigate();
   const isEditing = Boolean(id);
 
-  const [tab, setTab] = useState('campos');
+  const [tab, setTab] = useState('config');
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
 
@@ -61,15 +61,17 @@ export function FormularioBuilderPage() {
     setSaving(true);
     try {
       let fId = formularioId;
+      const esNuevo = !fId;
       if (fId) {
         await formulariosApi.actualizar(fId, config);
       } else {
         const res = await formulariosApi.crear(config);
         fId = res.data.data.id;
         setFormularioId(fId);
+        navigate(`/formularios/${fId}/editar`, { replace: true });
       }
-      toast.success(formularioId ? 'Formulario guardado' : 'Formulario creado');
-      navigate('/formularios');
+      toast.success(esNuevo ? 'Formulario creado' : 'Configuración guardada');
+      if (esNuevo) setTab('campos');
     } catch {
       toast.error('Error al guardar');
     } finally {
@@ -78,12 +80,27 @@ export function FormularioBuilderPage() {
   }
 
   async function guardarCampos() {
-    if (!formularioId) { toast.error('Guarda la configuración primero'); return; }
+    let fId = formularioId;
+    if (!fId) {
+      if (!config.nombre.trim()) {
+        toast.error('Completa el nombre del formulario en Configuración primero');
+        setTab('config');
+        return;
+      }
+      try {
+        const res = await formulariosApi.crear({ ...config });
+        fId = res.data.data.id;
+        setFormularioId(fId);
+        navigate(`/formularios/${fId}/editar`, { replace: true });
+      } catch {
+        toast.error('Error al crear formulario');
+        return;
+      }
+    }
     setSaving(true);
     try {
-      const res = await formulariosApi.guardarCampos(formularioId, campos);
+      const res = await formulariosApi.guardarCampos(fId, campos);
       const savedCampos = res.data.data;
-      // Merge los IDs de la BD de vuelta al estado local para que el PDFMapper los tenga disponibles
       setCampos(prev => prev.map((c, i) => ({ ...c, id: savedCampos[i]?.id ?? c.id })));
       toast.success('Campos guardados');
     } catch {

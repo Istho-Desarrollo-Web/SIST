@@ -12,11 +12,16 @@ if (hasCloudinary) {
   const cloudinary = require('./cloudinary');
   storage = new CloudinaryStorage({
     cloudinary,
-    params: async (req, file) => ({
-      folder: 'sist-solicitudes',
-      public_id: uuidv4(),
-      resource_type: 'auto',
-    }),
+    params: async (req, file) => {
+      const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+      const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+      return {
+        folder: 'sist-solicitudes',
+        public_id: uuidv4(),
+        // raw para PDFs y documentos: entrega pública sin restricciones de transformación
+        resource_type: isImage ? 'image' : 'raw',
+      };
+    },
   });
 } else {
   const uploadDir = path.join(__dirname, '../../uploads/solicitudes');

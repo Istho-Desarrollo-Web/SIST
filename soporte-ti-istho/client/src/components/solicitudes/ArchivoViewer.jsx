@@ -21,8 +21,20 @@ function getIcon(nombre) {
   return { Icon: FileText, color: 'text-orange-500' };
 }
 
+// Cloudinary PDFs subidos con resource_type:'auto' quedan en image/upload y requieren
+// autenticación en algunos planes. Forzar raw/upload para entregarlos públicamente.
+function fixCloudinaryUrl(url, nombre) {
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+  const ext = (nombre || '').split('.').pop().toLowerCase();
+  const docExts = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'mp4', 'webm', 'avi', 'mov', 'mp3', 'wav', 'ogg', 'm4a']);
+  if (docExts.has(ext) && url.includes('/image/upload/')) {
+    return url.replace('/image/upload/', '/raw/upload/');
+  }
+  return url;
+}
+
 function PreviewPanel({ archivo, onClose }) {
-  const url = archivo.ruta;
+  const url = fixCloudinaryUrl(archivo.ruta, archivo.nombre);
   const kind = getKind(archivo.nombre);
 
   return (
