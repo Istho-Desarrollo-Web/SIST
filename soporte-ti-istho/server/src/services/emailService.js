@@ -68,17 +68,22 @@ async function _send({ to, subject, html }) {
     typeof r === 'string' ? { email: r } : r
   );
 
-  await axios.post('https://api.brevo.com/v3/smtp/email', {
-    sender: { name: FROM_NAME, email: FROM_EMAIL },
-    to: toList,
-    subject,
-    htmlContent: html,
-  }, {
-    headers: {
-      'api-key': process.env.BREVO_API_KEY,
-      'Content-Type': 'application/json',
-    },
-  });
+  try {
+    await axios.post('https://api.brevo.com/v3/smtp/email', {
+      sender: { name: FROM_NAME, email: FROM_EMAIL },
+      to: toList,
+      subject,
+      htmlContent: html,
+    }, {
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+  } catch (err) {
+    const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+    throw new Error(`${err.response?.status || ''} ${detail}`);
+  }
 }
 
 async function notificarNuevaSolicitud(solicitud, empleado) {
