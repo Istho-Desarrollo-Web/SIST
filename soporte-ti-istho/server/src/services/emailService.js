@@ -1,26 +1,15 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const { Usuario } = require('../models');
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.EMAIL_PORT || '587'),
-  secure: process.env.EMAIL_SECURE === 'true',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Verificar conexión SMTP al iniciar (no bloquea el arranque)
-if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-  transporter.verify().then(() => {
-    console.log('[email] Conexión SMTP verificada OK');
-  }).catch((err) => {
-    console.error('[email] Fallo verificación SMTP:', err.message);
-  });
+const FROM = process.env.EMAIL_FROM || 'Soporte TI ISTHO <onboarding@resend.dev>';
+
+if (!process.env.RESEND_API_KEY) {
+  console.warn('[email] RESEND_API_KEY no configurada — los correos no se enviarán');
+} else {
+  console.log('[email] Resend configurado OK');
 }
-
-const FROM = `"Soporte TI ISTHO" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`;
 
 async function getItRecipients() {
   const usuarios = await Usuario.findAll({
@@ -74,72 +63,70 @@ function baseHtml(title, body) {
 </div></body></html>`;
 }
 
+async function _send({ to, subject, html }) {
+  if (!process.env.RESEND_API_KEY) return;
+  const recipients = Array.isArray(to) ? to : [to];
+  const { error } = await resend.emails.send({ from: FROM, to: recipients, subject, html });
+  if (error) throw new Error(error.message || JSON.stringify(error));
+}
+
 async function notificarNuevaSolicitud(solicitud, empleado) {
   const recipients = await getItRecipients();
   if (!recipients.length) return;
 
-  const html = baseHtml('Nueva solicitud de soporte recibida', `
-    <p style="margin:0 0 18px;font-size:15px;color:#1e293b">Se ha creado una nueva solicitud de soporte:</p>
-    <div class="row"><span class="label">Número</span><span class="value" style="font-family:monospace;font-weight:700;color:#E8531E">${solicitud.numero}</span></div>
-    <div class="row"><span class="label">Empleado</span><span class="value">${empleado.nombreCompleto}</span></div>
-    <div class="row"><span class="label">Área</span><span class="value">${empleado.area}${empleado.cargo ? ' — ' + empleado.cargo : ''}</span></div>
-    ${empleado.telefono ? `<div class="row"><span class="label">Teléfono</span><span class="value">${empleado.telefono}</span></div>` : ''}
-    <div class="row"><span class="label">Tipo</span><span class="value">${solicitud.tipoSolicitud.replace(/_/g, ' ')}</span></div>
-    <div class="row"><span class="label">Prioridad</span><span class="value"><span class="badge badge-${solicitud.prioridad}">${PRIORIDAD_LABEL[solicitud.prioridad]}</span></span></div>
-    <hr class="divider">
-    <div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Descripción</div>
-    <div class="desc">${solicitud.descripcion}</div>
-  `);
-
-  await transporter.sendMail({
-    from: FROM,
-    to: recipients.join(', '),
+  await _send({
+    to: recipients,
     subject: `[SIST] Nueva solicitud ${solicitud.numero} — ${PRIORIDAD_LABEL[solicitud.prioridad]} — ${empleado.nombreCompleto}`,
-    html,
+    html: baseHtml('Nueva solicitud de soporte recibida', `
+      <p style="margin:0 0 18px;font-size:15px;color:#1e293b">Se ha creado una nueva solicitud de soporte:</p>
+      <div class="row"><span class="label">Número</span><span class="value" style="font-family:monospace;font-weight:700;color:#E8531E">${solicitud.numero}</span></div>
+      <div class="row"><span class="label">Empleado</span><span class="value">${empleado.nombreCompleto}</span></div>
+      <div class="row"><span class="label">Área</span><span class="value">${empleado.area}${empleado.cargo ? ' — ' + empleado.cargo : ''}</span></div>
+      ${empleado.telefono ? `<div class="row"><span class="label">Teléfono</span><span class="value">${empleado.telefono}</span></div>` : ''}
+      <div class="row"><span class="label">Tipo</span><span class="value">${solicitud.tipoSolicitud.replace(/_/g, ' ')}</span></div>
+      <div class="row"><span class="label">Prioridad</span><span class="value"><span class="badge badge-${solicitud.prioridad}">${PRIORIDAD_LABEL[solicitud.prioridad]}</span></span></div>
+      <hr class="divider">
+      <div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Descripción</div>
+      <div class="desc">${solicitud.descripcion}</div>
+    `),
   });
 }
 
 async function notificarConfirmacionEmpleado(solicitud, empleado) {
   if (!empleado.email) return;
 
-  const html = baseHtml('Confirmación de tu solicitud de soporte', `
-    <p style="margin:0 0 18px;font-size:15px;color:#1e293b">Hola <strong>${empleado.nombreCompleto}</strong>,</p>
-    <p style="margin:0 0 18px;font-size:14px;color:#334155">Tu solicitud de soporte ha sido recibida exitosamente. El equipo de TI la atenderá a la brevedad.</p>
-    <div class="row"><span class="label">Número de ticket</span><span class="value" style="font-family:monospace;font-weight:700;color:#E8531E">${solicitud.numero}</span></div>
-    <div class="row"><span class="label">Tipo</span><span class="value">${solicitud.tipoSolicitud.replace(/_/g, ' ')}</span></div>
-    <div class="row"><span class="label">Prioridad</span><span class="value"><span class="badge badge-${solicitud.prioridad}">${PRIORIDAD_LABEL[solicitud.prioridad]}</span></span></div>
-    <hr class="divider">
-    <div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tu descripción</div>
-    <div class="desc">${solicitud.descripcion}</div>
-    <p style="margin:18px 0 0;font-size:13px;color:#64748b">Guarda este número de ticket para hacer seguimiento a tu solicitud.</p>
-  `);
-
-  await transporter.sendMail({
-    from: FROM,
+  await _send({
     to: empleado.email,
     subject: `[SIST] Ticket ${solicitud.numero} recibido — Soporte TI ISTHO`,
-    html,
+    html: baseHtml('Confirmación de tu solicitud de soporte', `
+      <p style="margin:0 0 18px;font-size:15px;color:#1e293b">Hola <strong>${empleado.nombreCompleto}</strong>,</p>
+      <p style="margin:0 0 18px;font-size:14px;color:#334155">Tu solicitud de soporte ha sido recibida exitosamente. El equipo de TI la atenderá a la brevedad.</p>
+      <div class="row"><span class="label">Número de ticket</span><span class="value" style="font-family:monospace;font-weight:700;color:#E8531E">${solicitud.numero}</span></div>
+      <div class="row"><span class="label">Tipo</span><span class="value">${solicitud.tipoSolicitud.replace(/_/g, ' ')}</span></div>
+      <div class="row"><span class="label">Prioridad</span><span class="value"><span class="badge badge-${solicitud.prioridad}">${PRIORIDAD_LABEL[solicitud.prioridad]}</span></span></div>
+      <hr class="divider">
+      <div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tu descripción</div>
+      <div class="desc">${solicitud.descripcion}</div>
+      <p style="margin:18px 0 0;font-size:13px;color:#64748b">Guarda este número de ticket para hacer seguimiento a tu solicitud.</p>
+    `),
   });
 }
 
 async function notificarCambioEstado(solicitud, empleado, estadoAnterior, estadoNuevo, comentario) {
   if (!empleado?.email) return;
 
-  const html = baseHtml('Actualización en tu solicitud de soporte', `
-    <p style="margin:0 0 18px;font-size:15px;color:#1e293b">Hola <strong>${empleado.nombreCompleto}</strong>,</p>
-    <p style="margin:0 0 18px;font-size:14px;color:#334155">El estado de tu solicitud ha sido actualizado:</p>
-    <div class="row"><span class="label">Ticket</span><span class="value" style="font-family:monospace;font-weight:700;color:#E8531E">${solicitud.numero}</span></div>
-    <div class="row"><span class="label">Estado anterior</span><span class="value"><span class="badge badge-${estadoAnterior}">${ESTADO_LABEL[estadoAnterior] || estadoAnterior}</span></span></div>
-    <div class="row"><span class="label">Nuevo estado</span><span class="value"><span class="badge badge-${estadoNuevo}">${ESTADO_LABEL[estadoNuevo] || estadoNuevo}</span></span></div>
-    ${comentario ? `<hr class="divider"><div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Comentario del técnico</div><div class="desc">${comentario}</div>` : ''}
-    <p style="margin:18px 0 0;font-size:13px;color:#64748b">Si tienes dudas, comunícate con el área de TI.</p>
-  `);
-
-  await transporter.sendMail({
-    from: FROM,
+  await _send({
     to: empleado.email,
     subject: `[SIST] Ticket ${solicitud.numero} — Estado actualizado: ${ESTADO_LABEL[estadoNuevo] || estadoNuevo}`,
-    html,
+    html: baseHtml('Actualización en tu solicitud de soporte', `
+      <p style="margin:0 0 18px;font-size:15px;color:#1e293b">Hola <strong>${empleado.nombreCompleto}</strong>,</p>
+      <p style="margin:0 0 18px;font-size:14px;color:#334155">El estado de tu solicitud ha sido actualizado:</p>
+      <div class="row"><span class="label">Ticket</span><span class="value" style="font-family:monospace;font-weight:700;color:#E8531E">${solicitud.numero}</span></div>
+      <div class="row"><span class="label">Estado anterior</span><span class="value"><span class="badge badge-${estadoAnterior}">${ESTADO_LABEL[estadoAnterior] || estadoAnterior}</span></span></div>
+      <div class="row"><span class="label">Nuevo estado</span><span class="value"><span class="badge badge-${estadoNuevo}">${ESTADO_LABEL[estadoNuevo] || estadoNuevo}</span></span></div>
+      ${comentario ? `<hr class="divider"><div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Comentario del técnico</div><div class="desc">${comentario}</div>` : ''}
+      <p style="margin:18px 0 0;font-size:13px;color:#64748b">Si tienes dudas, comunícate con el área de TI.</p>
+    `),
   });
 }
 
