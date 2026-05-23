@@ -130,8 +130,8 @@ async function crearPublica(req, res, next) {
     });
 
     // Notificaciones en segundo plano (no bloquean la respuesta)
-    notificarNuevaSolicitud(sol, empleado).catch(() => {});
-    notificarConfirmacionEmpleado(sol, empleado).catch(() => {});
+    notificarNuevaSolicitud(sol, empleado).catch((e) => console.error('[email] notificarNuevaSolicitud:', e.message));
+    notificarConfirmacionEmpleado(sol, empleado).catch((e) => console.error('[email] notificarConfirmacionEmpleado:', e.message));
 
     res.status(201).json({
       success: true,
@@ -193,7 +193,7 @@ async function cambiarEstado(req, res, next) {
     });
 
     const empleado = await Empleado.findByPk(sol.empleado_id);
-    notificarCambioEstado(sol, empleado, anterior, estado, req.body.comentarioNotificacion || null).catch(() => {});
+    notificarCambioEstado(sol, empleado, anterior, estado, req.body.comentarioNotificacion || null).catch((e) => console.error('[email] notificarCambioEstado:', e.message));
 
     const solActualizada = await Solicitud.findByPk(sol.id, {
       include: [
@@ -378,7 +378,7 @@ async function bulkAction(req, res, next) {
 
       for (const { sol, estadoAnterior, estadoNuevo } of paraNotificar) {
         const emp = empleadoMap[sol.empleado_id];
-        if (emp) notificarCambioEstado(sol, emp, estadoAnterior, estadoNuevo, null).catch(() => {});
+        if (emp) notificarCambioEstado(sol, emp, estadoAnterior, estadoNuevo, null).catch((e) => console.error('[email] notificarCambioEstado bulk:', e.message));
       }
     }
 

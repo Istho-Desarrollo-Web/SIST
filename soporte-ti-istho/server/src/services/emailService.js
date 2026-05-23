@@ -11,6 +11,15 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Verificar conexión SMTP al iniciar (no bloquea el arranque)
+if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  transporter.verify().then(() => {
+    console.log('[email] Conexión SMTP verificada OK');
+  }).catch((err) => {
+    console.error('[email] Fallo verificación SMTP:', err.message);
+  });
+}
+
 const FROM = `"Soporte TI ISTHO" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`;
 
 async function getItRecipients() {
