@@ -1,13 +1,14 @@
 export const ROLES = { ADMIN: 'admin', TECNICO: 'tecnico', USUARIO: 'usuario' };
 
 export const ESTADOS_LABEL = {
-  abierto: 'Abierto',
-  en_proceso: 'En Proceso',
+  abierto:           'Abierto',
+  en_analisis:       'En Análisis',
+  en_proceso:        'En Proceso',
   pendiente_usuario: 'Pendiente Usuario',
   pendiente_externo: 'Pendiente Externo',
-  resuelto: 'Resuelto',
-  cerrado: 'Cerrado',
-  cancelado: 'Cancelado',
+  resuelto:          'Resuelto',
+  cerrado:           'Cerrado',
+  rechazado:         'Rechazado',
 };
 
 export const PRIORIDADES_LABEL = {
@@ -37,11 +38,12 @@ export const PRIORIDAD_COLORS = {
 };
 
 export const ESTADO_COLORS = {
-  abierto: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  en_proceso: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  abierto:           'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  en_analisis:       'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
+  en_proceso:        'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   pendiente_usuario: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   pendiente_externo: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
-  resuelto: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  cerrado: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
-  cancelado: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  resuelto:          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  cerrado:           'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
+  rechazado:         'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 };
