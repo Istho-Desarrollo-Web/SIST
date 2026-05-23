@@ -4,10 +4,10 @@ const { Usuario } = require('../models');
 const FROM_NAME = 'Soporte TI ISTHO';
 const FROM_EMAIL = process.env.EMAIL_FROM || 'liderti@istho.com.co';
 
-if (process.env.BREVO_API_KEY) {
-  console.log('[email] Brevo configurado OK — remitente:', FROM_EMAIL);
+if (process.env.SENDGRID_API_KEY) {
+  console.log('[email] SendGrid configurado OK — remitente:', FROM_EMAIL);
 } else {
-  console.warn('[email] BREVO_API_KEY no configurada — los correos no se enviarán');
+  console.warn('[email] SENDGRID_API_KEY no configurada — los correos no se enviarán');
 }
 
 async function getItRecipients() {
@@ -62,21 +62,21 @@ function baseHtml(title, body) {
 }
 
 async function _send({ to, subject, html }) {
-  if (!process.env.BREVO_API_KEY) return;
+  if (!process.env.SENDGRID_API_KEY) return;
 
   const toList = (Array.isArray(to) ? to : [to]).map(r =>
     typeof r === 'string' ? { email: r } : r
   );
 
   try {
-    await axios.post('https://api.brevo.com/v3/smtp/email', {
-      sender: { name: FROM_NAME, email: FROM_EMAIL },
-      to: toList,
+    await axios.post('https://api.sendgrid.com/v3/mail/send', {
+      personalizations: [{ to: toList }],
+      from: { email: FROM_EMAIL, name: FROM_NAME },
       subject,
-      htmlContent: html,
+      content: [{ type: 'text/html', value: html }],
     }, {
       headers: {
-        'api-key': process.env.BREVO_API_KEY,
+        'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
         'Content-Type': 'application/json',
       },
     });
