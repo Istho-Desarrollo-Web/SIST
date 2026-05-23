@@ -6,6 +6,17 @@ const { registrarAuditoria } = require('../services/auditoriaService');
 const { notificarNuevaSolicitud, notificarConfirmacionEmpleado, notificarCambioEstado } = require('../services/emailService');
 const { ROLES } = require('../utils/constants');
 
+const TRANSICIONES_VALIDAS = {
+  abierto:           ['en_analisis'],
+  en_analisis:       ['en_proceso', 'pendiente_usuario', 'pendiente_externo', 'rechazado'],
+  en_proceso:        ['resuelto', 'pendiente_usuario', 'pendiente_externo'],
+  pendiente_usuario: ['en_proceso', 'cerrado'],
+  pendiente_externo: ['en_proceso'],
+  resuelto:          ['cerrado', 'en_proceso'],
+  cerrado:           [],
+  rechazado:         [],
+};
+
 function generarNumero() {
   const now = new Date();
   const y = now.getFullYear();
@@ -167,14 +178,26 @@ async function actualizar(req, res, next) {
 
 async function cambiarEstado(req, res, next) {
   try {
-    const { estado } = req.body;
+    const { estado, comentarioNotificacion } = req.body;
     const sol = await Solicitud.findByPk(req.params.id);
     if (!sol) return res.status(404).json({ success: false, message: 'Solicitud no encontrada' });
 
     const anterior = sol.estado;
+    const transicionesPermitidas = TRANSICIONES_VALIDAS[anterior] || [];
+    if (!transicionesPermitidas.includes(estado)) {
+      return res.status(400).json({
+        success: false,
+        message: `Transición no permitida: ${anterior} → ${estado}`,
+      });
+    }
+
+    if (estado === 'rechazado' && !comentarioNotificacion?.trim()) {
+      return res.status(400).json({ success: false, message: 'El motivo de rechazo es obligatorio' });
+    }
+
     const updates = { estado };
 
-    if (estado === 'en_proceso' && !sol.fechaPrimeraRespuesta) {
+    if (estado === 'en_analisis' && !sol.fechaPrimeraRespuesta) {
       updates.fechaPrimeraRespuesta = new Date();
     }
     if (estado === 'resuelto' || estado === 'cerrado') {
@@ -193,7 +216,8 @@ async function cambiarEstado(req, res, next) {
     });
 
     const empleado = await Empleado.findByPk(sol.empleado_id);
-    notificarCambioEstado(sol, empleado, anterior, estado, req.body.comentarioNotificacion || null).catch((e) => console.error('[email] notificarCambioEstado:', e.message));
+    notificarCambioEstado(sol, empleado, anterior, estado, comentarioNotificacion || null)
+      .catch((e) => console.error('[email] notificarCambioEstado:', e.message));
 
     const solActualizada = await Solicitud.findByPk(sol.id, {
       include: [
@@ -212,7 +236,7 @@ async function asignarTecnico(req, res, next) {
     if (!sol) return res.status(404).json({ success: false, message: 'Solicitud no encontrada' });
 
     const anterior = sol.tecnicoAsignado;
-    await sol.update({ tecnicoAsignado: tecnicoId, estado: sol.estado === 'abierto' ? 'en_proceso' : sol.estado });
+    await sol.update({ tecnicoAsignado: tecnicoId, estado: sol.estado === 'abierto' ? 'en_analisis' : sol.estado });
 
     await registrarAuditoria({
       tabla: 'solicitudes', registro_id: sol.id, operacion: 'UPDATE',
@@ -289,9 +313,17 @@ async function bulkAction(req, res, next) {
       return res.status(400).json({ success: false, message: 'Acción no válida' });
     }
 
-    const ESTADOS_VALIDOS = ['abierto', 'en_proceso', 'pendiente_usuario', 'pendiente_externo', 'resuelto', 'cerrado', 'cancelado'];
+    const ESTADOS_VALIDOS = [
+      'abierto', 'en_analisis', 'en_proceso',
+      'pendiente_usuario', 'pendiente_externo',
+      'resuelto', 'cerrado', 'rechazado',
+    ];
     if (accion === 'cambiar_estado' && !ESTADOS_VALIDOS.includes(valor)) {
       return res.status(400).json({ success: false, message: 'Estado no válido' });
+    }
+
+    if (accion === 'cambiar_estado' && valor === 'rechazado') {
+      return res.status(400).json({ success: false, message: 'El rechazo individual requiere motivo. Usa la acción individual para rechazar.' });
     }
 
     if (accion === 'asignar_tecnico' && req.user.rol !== ROLES.ADMIN) {
@@ -324,6 +356,7 @@ async function bulkAction(req, res, next) {
 
     const ahora = new Date();
     let actualizadas = 0;
+    const omitidas = [];
     const paraNotificar = []; // { sol, empleado, estadoAnterior, estadoNuevo }
 
     await sequelize.transaction(async (t) => {
@@ -335,8 +368,13 @@ async function bulkAction(req, res, next) {
         const updates = {};
 
         if (accion === 'cambiar_estado') {
+          const permitidas = TRANSICIONES_VALIDAS[sol.estado] || [];
+          if (!permitidas.includes(valor)) {
+            omitidas.push({ id: sol.id, numero: sol.numero, motivo: `Transición no permitida: ${sol.estado} → ${valor}` });
+            continue;
+          }
           updates.estado = valor;
-          if (valor === 'en_proceso' && !sol.fechaPrimeraRespuesta) {
+          if (valor === 'en_analisis' && !sol.fechaPrimeraRespuesta) {
             updates.fechaPrimeraRespuesta = ahora;
           }
           if (valor === 'resuelto' || valor === 'cerrado') {
@@ -348,7 +386,7 @@ async function bulkAction(req, res, next) {
           }
         } else if (accion === 'asignar_tecnico') {
           updates.tecnicoAsignado = tecnicoId;
-          if (sol.estado === 'abierto') updates.estado = 'en_proceso';
+          if (sol.estado === 'abierto') updates.estado = 'en_analisis';
         }
 
         const estadoAnterior = anterior.estado;
@@ -385,7 +423,7 @@ async function bulkAction(req, res, next) {
     res.json({
       success: true,
       message: `${actualizadas} solicitud${actualizadas !== 1 ? 'es' : ''} actualizada${actualizadas !== 1 ? 's' : ''}`,
-      data: { actualizadas, total: ids.length },
+      data: { actualizadas, total: ids.length, omitidas },
     });
   } catch (err) { next(err); }
 }
