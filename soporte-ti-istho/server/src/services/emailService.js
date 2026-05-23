@@ -55,7 +55,7 @@ function baseHtml(title, body) {
   .badge-en_proceso{background:#fef3c7;color:#b45309}
   .badge-resuelto{background:#dcfce7;color:#166534}
   .badge-cerrado{background:#f1f5f9;color:#475569}
-  .badge-cancelado{background:#fee2e2;color:#b91c1c}
+  .badge-rechazado{background:#fee2e2;color:#b91c1c}
   .desc{background:#f8fafc;border-radius:8px;padding:14px 16px;font-size:14px;color:#334155;margin-top:4px;line-height:1.6}
   .footer{background:#f8fafc;padding:14px 32px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0}
   .divider{border:none;border-top:1px solid #e2e8f0;margin:18px 0}
