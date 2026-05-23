@@ -1,13 +1,14 @@
 const ROLES = { ADMIN: 'admin', TECNICO: 'tecnico', USUARIO: 'usuario' };
 
 const ESTADOS = {
-  ABIERTO: 'abierto',
-  EN_PROCESO: 'en_proceso',
+  ABIERTO:           'abierto',
+  EN_ANALISIS:       'en_analisis',
+  EN_PROCESO:        'en_proceso',
   PENDIENTE_USUARIO: 'pendiente_usuario',
   PENDIENTE_EXTERNO: 'pendiente_externo',
-  RESUELTO: 'resuelto',
-  CERRADO: 'cerrado',
-  CANCELADO: 'cancelado',
+  RESUELTO:          'resuelto',
+  CERRADO:           'cerrado',
+  RECHAZADO:         'rechazado',
 };
 
 const PRIORIDADES = { CRITICA: 'critica', ALTA: 'alta', MEDIA: 'media', BAJA: 'baja' };

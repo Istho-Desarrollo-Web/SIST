@@ -19,7 +19,11 @@ Solicitud.init({
   },
   descripcion: { type: DataTypes.TEXT, allowNull: false },
   estado: {
-    type: DataTypes.ENUM('abierto', 'en_proceso', 'pendiente_usuario', 'pendiente_externo', 'resuelto', 'cerrado', 'cancelado'),
+    type: DataTypes.ENUM(
+      'abierto', 'en_analisis', 'en_proceso',
+      'pendiente_usuario', 'pendiente_externo',
+      'resuelto', 'cerrado', 'rechazado'
+    ),
     allowNull: false,
     defaultValue: 'abierto',
   },
