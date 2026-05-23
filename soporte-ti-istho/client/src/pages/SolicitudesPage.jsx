@@ -18,8 +18,9 @@ import { ESTADOS_LABEL, PRIORIDADES_LABEL } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 
 const ESTADOS_BULK = [
-  'abierto', 'en_proceso', 'pendiente_usuario',
-  'pendiente_externo', 'resuelto', 'cerrado', 'cancelado',
+  'abierto', 'en_analisis', 'en_proceso',
+  'pendiente_usuario', 'pendiente_externo',
+  'resuelto', 'cerrado',
 ];
 
 export function SolicitudesPage() {
