@@ -64,9 +64,11 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
       const res = await solicitudService.cambiarEstado(sol.id, estado, motivo);
       setSol(res.data.data);
       toast.success('Estado actualizado');
+      return true;
     } catch (err) {
       const msg = err.response?.data?.message || 'Error al cambiar estado';
       toast.error(msg);
+      return false;
     } finally { setSaving(false); }
   };
 
@@ -81,9 +83,11 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
 
   const confirmarRechazo = async () => {
     if (!motivoRechazo.trim()) return;
-    await cambiarEstado('rechazado', motivoRechazo.trim());
-    setShowMotivoRechazo(false);
-    setMotivoRechazo('');
+    const ok = await cambiarEstado('rechazado', motivoRechazo.trim());
+    if (ok) {
+      setShowMotivoRechazo(false);
+      setMotivoRechazo('');
+    }
   };
 
   const asignar = async (tecnicoId) => {
