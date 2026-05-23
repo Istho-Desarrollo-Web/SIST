@@ -22,8 +22,14 @@ async function getItRecipients() {
 
 const PRIORIDAD_LABEL = { critica: 'Crítica', alta: 'Alta', media: 'Media', baja: 'Baja' };
 const ESTADO_LABEL = {
-  abierto: 'Abierto', en_proceso: 'En proceso', pendiente_usuario: 'Pendiente usuario',
-  pendiente_externo: 'Pendiente externo', resuelto: 'Resuelto', cerrado: 'Cerrado', cancelado: 'Cancelado',
+  abierto:           'Abierto',
+  en_analisis:       'En Análisis',
+  en_proceso:        'En proceso',
+  pendiente_usuario: 'Pendiente usuario',
+  pendiente_externo: 'Pendiente externo',
+  resuelto:          'Resuelto',
+  cerrado:           'Cerrado',
+  rechazado:         'Rechazado',
 };
 
 function baseHtml(title, body) {
