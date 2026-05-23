@@ -1,19 +1,8 @@
-const Brevo = require('@getbrevo/brevo');
+const axios = require('axios');
 const { Usuario } = require('../models');
 
 const FROM_NAME = 'Soporte TI ISTHO';
 const FROM_EMAIL = process.env.EMAIL_FROM || 'liderti@istho.com.co';
-
-let _client = null;
-function getClient() {
-  if (!process.env.BREVO_API_KEY) return null;
-  if (!_client) {
-    const apiInstance = new Brevo.TransactionalEmailsApi();
-    apiInstance.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
-    _client = apiInstance;
-  }
-  return _client;
-}
 
 if (process.env.BREVO_API_KEY) {
   console.log('[email] Brevo configurado OK — remitente:', FROM_EMAIL);
@@ -73,20 +62,23 @@ function baseHtml(title, body) {
 }
 
 async function _send({ to, subject, html }) {
-  const client = getClient();
-  if (!client) return;
+  if (!process.env.BREVO_API_KEY) return;
 
   const toList = (Array.isArray(to) ? to : [to]).map(r =>
     typeof r === 'string' ? { email: r } : r
   );
 
-  const email = new Brevo.SendSmtpEmail();
-  email.sender = { name: FROM_NAME, email: FROM_EMAIL };
-  email.to = toList;
-  email.subject = subject;
-  email.htmlContent = html;
-
-  await client.sendTransacEmail(email);
+  await axios.post('https://api.brevo.com/v3/smtp/email', {
+    sender: { name: FROM_NAME, email: FROM_EMAIL },
+    to: toList,
+    subject,
+    htmlContent: html,
+  }, {
+    headers: {
+      'api-key': process.env.BREVO_API_KEY,
+      'Content-Type': 'application/json',
+    },
+  });
 }
 
 async function notificarNuevaSolicitud(solicitud, empleado) {
