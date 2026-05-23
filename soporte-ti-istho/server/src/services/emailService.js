@@ -1,14 +1,19 @@
 const { Resend } = require('resend');
 const { Usuario } = require('../models');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM = process.env.EMAIL_FROM || 'Soporte TI ISTHO <onboarding@resend.dev>';
 
-if (!process.env.RESEND_API_KEY) {
-  console.warn('[email] RESEND_API_KEY no configurada — los correos no se enviarán');
-} else {
+let _resend = null;
+function getResend() {
+  if (!process.env.RESEND_API_KEY) return null;
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
+
+if (process.env.RESEND_API_KEY) {
   console.log('[email] Resend configurado OK');
+} else {
+  console.warn('[email] RESEND_API_KEY no configurada — los correos no se enviarán');
 }
 
 async function getItRecipients() {
@@ -64,9 +69,10 @@ function baseHtml(title, body) {
 }
 
 async function _send({ to, subject, html }) {
-  if (!process.env.RESEND_API_KEY) return;
+  const client = getResend();
+  if (!client) return;
   const recipients = Array.isArray(to) ? to : [to];
-  const { error } = await resend.emails.send({ from: FROM, to: recipients, subject, html });
+  const { error } = await client.emails.send({ from: FROM, to: recipients, subject, html });
   if (error) throw new Error(error.message || JSON.stringify(error));
 }
 
