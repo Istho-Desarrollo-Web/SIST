@@ -1,29 +1,34 @@
-const { Resend } = require('resend');
+const Brevo = require('@getbrevo/brevo');
 const { Usuario } = require('../models');
 
-const FROM = process.env.EMAIL_FROM || 'Soporte TI ISTHO <onboarding@resend.dev>';
+const FROM_NAME = 'Soporte TI ISTHO';
+const FROM_EMAIL = process.env.EMAIL_FROM || 'liderti@istho.com.co';
 
-let _resend = null;
-function getResend() {
-  if (!process.env.RESEND_API_KEY) return null;
-  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
-  return _resend;
+let _client = null;
+function getClient() {
+  if (!process.env.BREVO_API_KEY) return null;
+  if (!_client) {
+    const apiInstance = new Brevo.TransactionalEmailsApi();
+    apiInstance.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
+    _client = apiInstance;
+  }
+  return _client;
 }
 
-if (process.env.RESEND_API_KEY) {
-  console.log('[email] Resend configurado OK');
+if (process.env.BREVO_API_KEY) {
+  console.log('[email] Brevo configurado OK — remitente:', FROM_EMAIL);
 } else {
-  console.warn('[email] RESEND_API_KEY no configurada — los correos no se enviarán');
+  console.warn('[email] BREVO_API_KEY no configurada — los correos no se enviarán');
 }
 
 async function getItRecipients() {
   const usuarios = await Usuario.findAll({
     where: { activo: true },
-    attributes: ['email', 'rol'],
+    attributes: ['email', 'nombre', 'rol'],
   });
   return usuarios
     .filter(u => ['admin', 'tecnico'].includes(u.rol) && u.email)
-    .map(u => u.email);
+    .map(u => ({ email: u.email, name: u.nombre }));
 }
 
 const PRIORIDAD_LABEL = { critica: 'Crítica', alta: 'Alta', media: 'Media', baja: 'Baja' };
@@ -59,7 +64,6 @@ function baseHtml(title, body) {
   .desc{background:#f8fafc;border-radius:8px;padding:14px 16px;font-size:14px;color:#334155;margin-top:4px;line-height:1.6}
   .footer{background:#f8fafc;padding:14px 32px;font-size:12px;color:#94a3b8;border-top:1px solid #e2e8f0}
   .divider{border:none;border-top:1px solid #e2e8f0;margin:18px 0}
-  .btn{display:inline-block;background:#E8531E;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;margin-top:16px}
 </style></head>
 <body><div class="card">
   <div class="header"><h1>Soporte TI — ISTHO S.A.S.</h1><p>${title}</p></div>
@@ -69,11 +73,20 @@ function baseHtml(title, body) {
 }
 
 async function _send({ to, subject, html }) {
-  const client = getResend();
+  const client = getClient();
   if (!client) return;
-  const recipients = Array.isArray(to) ? to : [to];
-  const { error } = await client.emails.send({ from: FROM, to: recipients, subject, html });
-  if (error) throw new Error(error.message || JSON.stringify(error));
+
+  const toList = (Array.isArray(to) ? to : [to]).map(r =>
+    typeof r === 'string' ? { email: r } : r
+  );
+
+  const email = new Brevo.SendSmtpEmail();
+  email.sender = { name: FROM_NAME, email: FROM_EMAIL };
+  email.to = toList;
+  email.subject = subject;
+  email.htmlContent = html;
+
+  await client.sendTransacEmail(email);
 }
 
 async function notificarNuevaSolicitud(solicitud, empleado) {
@@ -102,7 +115,7 @@ async function notificarConfirmacionEmpleado(solicitud, empleado) {
   if (!empleado.email) return;
 
   await _send({
-    to: empleado.email,
+    to: { email: empleado.email, name: empleado.nombreCompleto },
     subject: `[SIST] Ticket ${solicitud.numero} recibido — Soporte TI ISTHO`,
     html: baseHtml('Confirmación de tu solicitud de soporte', `
       <p style="margin:0 0 18px;font-size:15px;color:#1e293b">Hola <strong>${empleado.nombreCompleto}</strong>,</p>
@@ -122,7 +135,7 @@ async function notificarCambioEstado(solicitud, empleado, estadoAnterior, estado
   if (!empleado?.email) return;
 
   await _send({
-    to: empleado.email,
+    to: { email: empleado.email, name: empleado.nombreCompleto },
     subject: `[SIST] Ticket ${solicitud.numero} — Estado actualizado: ${ESTADO_LABEL[estadoNuevo] || estadoNuevo}`,
     html: baseHtml('Actualización en tu solicitud de soporte', `
       <p style="margin:0 0 18px;font-size:15px;color:#1e293b">Hola <strong>${empleado.nombreCompleto}</strong>,</p>

@@ -21,6 +21,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@getbrevo/brevo": "^5.0.4",
     "axios": "^1.16.1",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^1.41.3",
@@ -38,7 +39,6 @@
     "mysql2": "^3.22.3",
     "nodemailer": "^8.0.7",
     "pdf-lib": "^1.17.1",
-    "resend": "^6.12.3",
     "sequelize": "^6.37.8",
     "sequelize-cli": "^6.6.5",
     "uuid": "^14.0.0"
