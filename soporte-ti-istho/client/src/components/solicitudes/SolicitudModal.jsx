@@ -19,6 +19,8 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
   const [sol, setSol] = useState(init);
   const [comentario, setComentario] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showMotivoRechazo, setShowMotivoRechazo] = useState(false);
+  const [motivoRechazo, setMotivoRechazo] = useState('');
   const [calificacion, setCalificacion] = useState(init.calificacion || 0);
   const [hoverCalif, setHoverCalif] = useState(0);
   const [comentarioCalif, setComentarioCalif] = useState(init.comentarioCalificacion || '');
@@ -56,14 +58,32 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
     }
   };
 
-  const cambiarEstado = async (estado) => {
+  const cambiarEstado = async (estado, motivo) => {
     setSaving(true);
     try {
-      const res = await solicitudService.cambiarEstado(sol.id, estado);
+      const res = await solicitudService.cambiarEstado(sol.id, estado, motivo);
       setSol(res.data.data);
       toast.success('Estado actualizado');
-    } catch { toast.error('Error al cambiar estado'); }
-    finally { setSaving(false); }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Error al cambiar estado';
+      toast.error(msg);
+    } finally { setSaving(false); }
+  };
+
+  const handleEstadoClick = (estado) => {
+    if (estado === 'rechazado') {
+      setMotivoRechazo('');
+      setShowMotivoRechazo(true);
+    } else {
+      cambiarEstado(estado);
+    }
+  };
+
+  const confirmarRechazo = async () => {
+    if (!motivoRechazo.trim()) return;
+    await cambiarEstado('rechazado', motivoRechazo.trim());
+    setShowMotivoRechazo(false);
+    setMotivoRechazo('');
   };
 
   const asignar = async (tecnicoId) => {
@@ -100,13 +120,14 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
   };
 
   const estadosSiguientes = {
-    abierto: ['en_proceso', 'cancelado'],
-    en_proceso: ['pendiente_usuario', 'pendiente_externo', 'resuelto', 'cancelado'],
-    pendiente_usuario: ['en_proceso', 'resuelto', 'cancelado'],
-    pendiente_externo: ['en_proceso', 'resuelto', 'cancelado'],
-    resuelto: ['cerrado', 'en_proceso'],
-    cerrado: [],
-    cancelado: [],
+    abierto:           ['en_analisis'],
+    en_analisis:       ['en_proceso', 'pendiente_usuario', 'pendiente_externo', 'rechazado'],
+    en_proceso:        ['resuelto', 'pendiente_usuario', 'pendiente_externo'],
+    pendiente_usuario: ['en_proceso', 'cerrado'],
+    pendiente_externo: ['en_proceso'],
+    resuelto:          ['cerrado', 'en_proceso'],
+    cerrado:           [],
+    rechazado:         [],
   };
 
   return (
@@ -185,7 +206,7 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
             <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Cambiar estado</p>
             <div className="flex flex-wrap gap-2">
               {estadosSiguientes[sol.estado].map(e => (
-                <Button key={e} variant="outline" size="sm" loading={saving} onClick={() => cambiarEstado(e)}>
+                <Button key={e} variant="outline" size="sm" loading={saving} onClick={() => handleEstadoClick(e)}>
                   <RefreshCw size={12} />
                   {ESTADOS_LABEL[e]}
                 </Button>
@@ -352,6 +373,41 @@ export function SolicitudModal({ solicitud: init, tecnicos, onClose, onUpdate })
           <Button variant="ghost" onClick={onClose}>Cerrar</Button>
         </div>
       </div>
+
+      {/* Modal de motivo de rechazo */}
+      {showMotivoRechazo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-navy-800 rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-base font-semibold text-navy-500 dark:text-white mb-1">Rechazar solicitud</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Documenta obligatoriamente el motivo del rechazo.
+            </p>
+            <textarea
+              value={motivoRechazo}
+              onChange={e => setMotivoRechazo(e.target.value)}
+              rows={3}
+              placeholder="Motivo del rechazo..."
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/50 resize-none mb-4"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowMotivoRechazo(false)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={saving}
+                disabled={!motivoRechazo.trim()}
+                onClick={confirmarRechazo}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Confirmar rechazo
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
