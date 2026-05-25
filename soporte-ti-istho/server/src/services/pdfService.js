@@ -48,8 +48,42 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos) {
     }
     form.flatten();
   } else {
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const pages = pdfDoc.getPages();
+
+    // Precarga de fuentes necesarias según los mapeos (evita re-embed por cada campo)
+    const fontCache = new Map();
+    async function getFont(familia, negrita, cursiva) {
+      const key = `${familia}-${negrita}-${cursiva}`;
+      if (fontCache.has(key)) return fontCache.get(key);
+      const FONT_MAP = {
+        'Helvetica-false-false':  StandardFonts.Helvetica,
+        'Helvetica-true-false':   StandardFonts.HelveticaBold,
+        'Helvetica-false-true':   StandardFonts.HelveticaOblique,
+        'Helvetica-true-true':    StandardFonts.HelveticaBoldOblique,
+        'TimesRoman-false-false': StandardFonts.TimesRoman,
+        'TimesRoman-true-false':  StandardFonts.TimesBold,
+        'TimesRoman-false-true':  StandardFonts.TimesItalic,
+        'TimesRoman-true-true':   StandardFonts.TimesBoldItalic,
+        'Courier-false-false':    StandardFonts.Courier,
+        'Courier-true-false':     StandardFonts.CourierBold,
+        'Courier-false-true':     StandardFonts.CourierOblique,
+        'Courier-true-true':      StandardFonts.CourierBoldOblique,
+      };
+      const stdFont = FONT_MAP[key] || StandardFonts.Helvetica;
+      const font = await pdfDoc.embedFont(stdFont);
+      fontCache.set(key, font);
+      return font;
+    }
+
+    function hexToRgb(hex) {
+      const h = (hex || '#000000').replace('#', '');
+      return rgb(
+        parseInt(h.substring(0, 2), 16) / 255,
+        parseInt(h.substring(2, 4), 16) / 255,
+        parseInt(h.substring(4, 6), 16) / 255,
+      );
+    }
+
     for (const mapeo of mapeos) {
       const rc = campoMap[mapeo.campoId];
       if (!rc) {
@@ -64,8 +98,6 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos) {
       if (!page) continue;
       const { width, height } = page.getSize();
 
-      // posX/posY en el mapper es el CENTRO del chip (transform: translate(-50%,-50%))
-      // → ajustar al borde izquierdo para texto e imágenes
       const chipAncho = mapeo.ancho || 20;
       const chipAlto = mapeo.alto || 5;
       const xLeft = ((mapeo.posX - chipAncho / 2) / 100) * width;
@@ -79,7 +111,7 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos) {
           const drawHeight = (chipAlto / 100) * height;
           page.drawImage(pngImage, {
             x: xLeft,
-            y: yCentro - drawHeight / 2,  // centrar verticalmente en el chip
+            y: yCentro - drawHeight / 2,
             width: drawWidth,
             height: drawHeight,
           });
@@ -88,14 +120,19 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos) {
         }
       } else if (rc.valor) {
         const fontSize = Number(mapeo.fontTamano) || 10;
+        const familia = mapeo.fontFamilia || 'Helvetica';
+        const negrita = Boolean(mapeo.fontNegrita);
+        const cursiva = Boolean(mapeo.fontCursiva);
+        const color = hexToRgb(mapeo.fontColor);
+        const font = await getFont(familia, negrita, cursiva);
         const textoFinal = aplicarFormatoFecha(rc.valor, mapeo.formatoFecha);
         try {
           page.drawText(String(textoFinal), {
             x: xLeft,
-            y: yCentro,  // baseline en el centro vertical del chip
+            y: yCentro,
             size: fontSize,
             font,
-            color: rgb(0, 0, 0),
+            color,
           });
         } catch (textErr) {
           console.warn(`[pdfService] drawText fallo campoId=${mapeo.campoId} valor="${rc.valor}":`, textErr.message);
