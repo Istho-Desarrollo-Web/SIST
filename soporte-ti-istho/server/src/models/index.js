@@ -5,13 +5,14 @@ const Solicitud = require('./Solicitud');
 const Auditoria = require('./Auditoria');
 const Formulario = require('./Formulario');
 const FormularioCampo = require('./FormularioCampo');
+const FormularioSeccion = require('./FormularioSeccion');
 const FormularioPdfPlantilla = require('./FormularioPdfPlantilla');
 const FormularioPdfMapeo = require('./FormularioPdfMapeo');
 const FormularioRespuesta = require('./FormularioRespuesta');
 const RespuestaCampo = require('./RespuestaCampo');
 const FormularioPdfGenerado = require('./FormularioPdfGenerado');
 
-// Asociaciones existentes
+// Solicitudes
 Empleado.hasMany(Solicitud, { foreignKey: 'empleado_id', as: 'solicitudes' });
 Solicitud.belongsTo(Empleado, { foreignKey: 'empleado_id', as: 'empleado' });
 Usuario.hasMany(Solicitud, { foreignKey: 'tecnicoAsignado', as: 'ticketsAsignados' });
@@ -19,12 +20,18 @@ Solicitud.belongsTo(Usuario, { foreignKey: 'tecnicoAsignado', as: 'tecnico' });
 Usuario.hasMany(Auditoria, { foreignKey: 'usuario_id', as: 'auditorias' });
 Auditoria.belongsTo(Usuario, { foreignKey: 'usuario_id', as: 'usuario' });
 
-// Asociaciones nuevas — Formularios
+// Formularios
 Formulario.belongsTo(Usuario, { foreignKey: 'creado_por', as: 'creador' });
 Usuario.hasMany(Formulario, { foreignKey: 'creado_por', as: 'formularios' });
 
 Formulario.hasMany(FormularioCampo, { foreignKey: 'formulario_id', as: 'campos' });
 FormularioCampo.belongsTo(Formulario, { foreignKey: 'formulario_id', as: 'formulario' });
+
+Formulario.hasMany(FormularioSeccion, { foreignKey: 'formulario_id', as: 'secciones' });
+FormularioSeccion.belongsTo(Formulario, { foreignKey: 'formulario_id', as: 'formulario' });
+
+FormularioSeccion.hasMany(FormularioCampo, { foreignKey: 'seccion_id', as: 'campos' });
+FormularioCampo.belongsTo(FormularioSeccion, { foreignKey: 'seccion_id', as: 'seccion' });
 
 Formulario.hasMany(FormularioPdfPlantilla, { foreignKey: 'formulario_id', as: 'plantillas' });
 FormularioPdfPlantilla.belongsTo(Formulario, { foreignKey: 'formulario_id', as: 'formulario' });
@@ -50,7 +57,7 @@ Usuario.hasMany(FormularioRespuesta, { foreignKey: 'respondido_por', as: 'respue
 module.exports = {
   sequelize,
   Usuario, Empleado, Solicitud, Auditoria,
-  Formulario, FormularioCampo, FormularioPdfPlantilla,
-  FormularioPdfMapeo, FormularioRespuesta, RespuestaCampo,
-  FormularioPdfGenerado,
+  Formulario, FormularioCampo, FormularioSeccion,
+  FormularioPdfPlantilla, FormularioPdfMapeo,
+  FormularioRespuesta, RespuestaCampo, FormularioPdfGenerado,
 };

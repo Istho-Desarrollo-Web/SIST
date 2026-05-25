@@ -10,6 +10,12 @@ FormularioCampo.init({
     allowNull: false,
     field: 'formulario_id',
   },
+  seccionId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: null,
+    field: 'seccion_id',
+  },
   tipo: {
     type: DataTypes.ENUM(
       'texto_corto', 'texto_largo', 'numero', 'fecha',
