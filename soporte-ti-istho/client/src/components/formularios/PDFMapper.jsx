@@ -4,7 +4,7 @@ import {
   useDraggable, useDroppable,
   PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
-import { X, ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Save, Bold, Italic } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Select } from '../common/Select';
 
@@ -293,6 +293,10 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
         ancho: 20,
         alto: 5,
         fontTamano: 10,
+        fontFamilia: 'Helvetica',
+        fontNegrita: false,
+        fontCursiva: false,
+        fontColor: '#000000',
         pdfCampoNombre: '',
       },
     ]);
@@ -403,7 +407,8 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
                 Inspector: <span className="font-normal">{selectedMapeo.etiqueta}</span>
                 <span className="ml-2 text-slate-400 dark:text-slate-500 font-normal">— Página {selectedMapeo.pagina}</span>
               </p>
-              <div className="flex flex-wrap gap-3">
+              {/* Posición y tamaño */}
+              <div className="flex flex-wrap gap-3 mb-4">
                 {selectedCampo?.tipo === 'fecha' && (
                   <div className="flex flex-col gap-1 w-full">
                     <label className="text-xs text-slate-500 dark:text-slate-400">Parte de la fecha</label>
@@ -450,6 +455,112 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
                   min={0} max={98} step={0.5}
                   onChange={(v) => updateMapeo(selectedKey, { posY: v })}
                 />
+              </div>
+
+              {/* Separador */}
+              <div className="border-t border-orange-200 dark:border-orange-800/40 mb-3" />
+
+              {/* Tipografía */}
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Tipografía
+              </p>
+
+              {/* Fuente + Tamaño */}
+              <div className="flex gap-2 mb-2">
+                <div className="flex flex-col gap-1 flex-1">
+                  <label className="text-xs text-slate-500 dark:text-slate-400">Fuente</label>
+                  <select
+                    value={selectedMapeo.fontFamilia || 'Helvetica'}
+                    onChange={e => updateMapeo(selectedKey, { fontFamilia: e.target.value })}
+                    className="px-2 py-1 text-sm border border-slate-300 dark:border-navy-500 rounded bg-white dark:bg-navy-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                  >
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="TimesRoman">Times New Roman</option>
+                    <option value="Courier">Courier</option>
+                  </select>
+                </div>
+                <InspectorInput
+                  label="PT"
+                  value={selectedMapeo.fontTamano || 10}
+                  min={6} max={72} step={1}
+                  onChange={(v) => updateMapeo(selectedKey, { fontTamano: v })}
+                />
+              </div>
+
+              {/* Negrita / Cursiva / Color */}
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  title="Negrita"
+                  onClick={() => updateMapeo(selectedKey, { fontNegrita: !selectedMapeo.fontNegrita })}
+                  className={`flex items-center justify-center w-8 h-8 rounded border transition-colors ${
+                    selectedMapeo.fontNegrita
+                      ? 'bg-navy-700 border-navy-700 text-white'
+                      : 'bg-white dark:bg-navy-700 border-slate-300 dark:border-navy-500 text-slate-600 dark:text-slate-300 hover:border-navy-500'
+                  }`}
+                >
+                  <Bold className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  title="Cursiva"
+                  onClick={() => updateMapeo(selectedKey, { fontCursiva: !selectedMapeo.fontCursiva })}
+                  className={`flex items-center justify-center w-8 h-8 rounded border transition-colors ${
+                    selectedMapeo.fontCursiva
+                      ? 'bg-navy-700 border-navy-700 text-white'
+                      : 'bg-white dark:bg-navy-700 border-slate-300 dark:border-navy-500 text-slate-600 dark:text-slate-300 hover:border-navy-500'
+                  }`}
+                >
+                  <Italic className="w-4 h-4" />
+                </button>
+                <div className="flex-1" />
+                <label className="text-xs text-slate-500 dark:text-slate-400">Color</label>
+                <div className="relative">
+                  <div
+                    className="w-7 h-7 rounded border-2 border-slate-300 dark:border-navy-500 cursor-pointer"
+                    style={{ backgroundColor: selectedMapeo.fontColor || '#000000' }}
+                    onClick={() => document.getElementById(`color-input-${selectedKey}`)?.click()}
+                  />
+                  <input
+                    id={`color-input-${selectedKey}`}
+                    type="color"
+                    value={selectedMapeo.fontColor || '#000000'}
+                    onChange={e => updateMapeo(selectedKey, { fontColor: e.target.value })}
+                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={selectedMapeo.fontColor || '#000000'}
+                  onChange={e => {
+                    const v = e.target.value;
+                    if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) {
+                      updateMapeo(selectedKey, { fontColor: v });
+                    }
+                  }}
+                  maxLength={7}
+                  className="w-20 px-2 py-1 text-xs border border-slate-300 dark:border-navy-500 rounded bg-white dark:bg-navy-700 text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                />
+              </div>
+
+              {/* Vista previa */}
+              <div className="rounded border border-dashed border-slate-200 dark:border-navy-600 bg-white dark:bg-navy-900 px-3 py-2 text-center">
+                <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">Vista previa</p>
+                <span
+                  style={{
+                    fontFamily: selectedMapeo.fontFamilia === 'TimesRoman'
+                      ? 'serif'
+                      : selectedMapeo.fontFamilia === 'Courier'
+                        ? 'monospace'
+                        : 'sans-serif',
+                    fontWeight: selectedMapeo.fontNegrita ? 'bold' : 'normal',
+                    fontStyle: selectedMapeo.fontCursiva ? 'italic' : 'normal',
+                    color: selectedMapeo.fontColor || '#000000',
+                    fontSize: `${Math.max(10, Math.min(24, selectedMapeo.fontTamano || 10))}px`,
+                  }}
+                >
+                  Texto de ejemplo
+                </span>
               </div>
             </div>
           )}
