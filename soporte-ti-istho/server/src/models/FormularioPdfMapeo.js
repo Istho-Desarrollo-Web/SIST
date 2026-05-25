@@ -26,6 +26,30 @@ FormularioPdfMapeo.init({
   alto: { type: DataTypes.FLOAT },
   fontTamano: { type: DataTypes.INTEGER, field: 'font_tamano' },
   formatoFecha: { type: DataTypes.STRING(20), field: 'formato_fecha' },
+  fontFamilia: {
+    type: DataTypes.ENUM('Helvetica', 'TimesRoman', 'Courier'),
+    allowNull: false,
+    defaultValue: 'Helvetica',
+    field: 'font_familia',
+  },
+  fontNegrita: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'font_negrita',
+  },
+  fontCursiva: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'font_cursiva',
+  },
+  fontColor: {
+    type: DataTypes.STRING(7),
+    allowNull: false,
+    defaultValue: '#000000',
+    field: 'font_color',
+  },
 }, {
   sequelize,
   modelName: 'FormularioPdfMapeo',
