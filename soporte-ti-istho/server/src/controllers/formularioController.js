@@ -142,21 +142,26 @@ async function eliminar(req, res, next) {
 }
 
 async function guardarCampos(req, res, next) {
+  const sequelize = require('../config/database');
+  const t = await sequelize.transaction();
   try {
     const { campos, secciones = [] } = req.body;
-    if (!Array.isArray(campos)) return res.status(400).json({ success: false, message: 'campos debe ser array' });
+    if (!Array.isArray(campos)) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'campos debe ser array' });
+    }
 
     const formularioId = parseInt(req.params.id);
 
     // ── Upsert secciones ──────────────────────────────────────────────────
     const existentesSecciones = await FormularioSeccion.findAll({
-      where: { formularioId }, attributes: ['id'],
+      where: { formularioId }, attributes: ['id'], transaction: t,
     });
     const idsSeccionesExistentes = existentesSecciones.map(s => s.id);
     const idsSeccionesEnviadas = secciones.filter(s => s.id).map(s => parseInt(s.id));
     const seccionIdsAEliminar = idsSeccionesExistentes.filter(id => !idsSeccionesEnviadas.includes(id));
     if (seccionIdsAEliminar.length) {
-      await FormularioSeccion.destroy({ where: { id: seccionIdsAEliminar } });
+      await FormularioSeccion.destroy({ where: { id: seccionIdsAEliminar }, transaction: t });
     }
 
     const keyToIdMap = new Map();
@@ -170,22 +175,22 @@ async function guardarCampos(req, res, next) {
       };
       let saved;
       if (sec.id) {
-        await FormularioSeccion.update(data, { where: { id: sec.id, formularioId } });
-        saved = await FormularioSeccion.findByPk(sec.id);
+        await FormularioSeccion.update(data, { where: { id: sec.id, formularioId }, transaction: t });
+        saved = await FormularioSeccion.findByPk(sec.id, { transaction: t });
       } else {
-        saved = await FormularioSeccion.create(data);
+        saved = await FormularioSeccion.create(data, { transaction: t });
       }
       if (sec._key) keyToIdMap.set(sec._key, saved.id);
       seccionResults.push({ ...saved.toJSON(), _key: sec._key || null });
     }
 
     // ── Upsert campos ─────────────────────────────────────────────────────
-    const existentes = await FormularioCampo.findAll({ where: { formularioId }, attributes: ['id'] });
+    const existentes = await FormularioCampo.findAll({ where: { formularioId }, attributes: ['id'], transaction: t });
     const idsExistentes = existentes.map(c => c.id);
     const idsEnviados = campos.filter(c => c.id).map(c => parseInt(c.id));
     const idsAEliminar = idsExistentes.filter(id => !idsEnviados.includes(id));
     if (idsAEliminar.length) {
-      await FormularioCampo.destroy({ where: { id: idsAEliminar } });
+      await FormularioCampo.destroy({ where: { id: idsAEliminar }, transaction: t });
     }
 
     const resultados = await Promise.all(
@@ -199,21 +204,28 @@ async function guardarCampos(req, res, next) {
           formularioId,
           orden: i,
           seccionId: resolvedSeccionId,
-          opciones: Array.isArray(c.opciones)
-            ? c.opciones
-            : (c.opciones ? JSON.parse(c.opciones) : null),
+          opciones: (() => {
+            if (Array.isArray(c.opciones)) return c.opciones;
+            if (!c.opciones) return null;
+            try { return JSON.parse(c.opciones); }
+            catch { return null; }
+          })(),
         };
         const parsedId = id ? parseInt(id) : null;
         if (parsedId && idsEnviados.includes(parsedId)) {
-          await FormularioCampo.update(data, { where: { id: parsedId, formularioId } });
-          return FormularioCampo.findByPk(parsedId);
+          await FormularioCampo.update(data, { where: { id: parsedId, formularioId }, transaction: t });
+          return FormularioCampo.findByPk(parsedId, { transaction: t });
         }
-        return FormularioCampo.create(data);
+        return FormularioCampo.create(data, { transaction: t });
       })
     );
 
+    await t.commit();
     res.json({ success: true, data: { secciones: seccionResults, campos: resultados } });
-  } catch (err) { next(err); }
+  } catch (err) {
+    await t.rollback();
+    next(err);
+  }
 }
 
 function _resolverUrlArchivo(req) {
