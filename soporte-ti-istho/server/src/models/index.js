@@ -30,8 +30,8 @@ FormularioCampo.belongsTo(Formulario, { foreignKey: 'formulario_id', as: 'formul
 Formulario.hasMany(FormularioSeccion, { foreignKey: 'formulario_id', as: 'secciones' });
 FormularioSeccion.belongsTo(Formulario, { foreignKey: 'formulario_id', as: 'formulario' });
 
-FormularioSeccion.hasMany(FormularioCampo, { foreignKey: 'seccion_id', as: 'campos' });
-FormularioCampo.belongsTo(FormularioSeccion, { foreignKey: 'seccion_id', as: 'seccion' });
+FormularioSeccion.hasMany(FormularioCampo, { foreignKey: 'seccionId', as: 'campos' });
+FormularioCampo.belongsTo(FormularioSeccion, { foreignKey: 'seccionId', as: 'seccion' });
 
 Formulario.hasMany(FormularioPdfPlantilla, { foreignKey: 'formulario_id', as: 'plantillas' });
 FormularioPdfPlantilla.belongsTo(Formulario, { foreignKey: 'formulario_id', as: 'formulario' });

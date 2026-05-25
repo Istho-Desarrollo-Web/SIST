@@ -50,6 +50,12 @@ FormularioPdfMapeo.init({
     defaultValue: '#000000',
     field: 'font_color',
   },
+  transformTexto: {
+    type: DataTypes.ENUM('ninguno', 'mayusculas', 'minusculas', 'capitalizar'),
+    allowNull: false,
+    defaultValue: 'ninguno',
+    field: 'transform_texto',
+  },
 }, {
   sequelize,
   modelName: 'FormularioPdfMapeo',

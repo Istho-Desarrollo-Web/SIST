@@ -3,6 +3,17 @@ const axios = require('axios');
 
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+function aplicarTransformTexto(valor, transform) {
+  if (!transform || transform === 'ninguno') return valor;
+  const s = String(valor);
+  if (transform === 'mayusculas') return s.toUpperCase();
+  if (transform === 'minusculas') return s.toLowerCase();
+  if (transform === 'capitalizar') {
+    return s.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  return s;
+}
+
 function aplicarFormatoFecha(valor, formatoFecha) {
   if (!formatoFecha || formatoFecha === 'completa') return valor;
   // Soporta YYYY-MM-DD o DD/MM/YYYY
@@ -125,7 +136,8 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos) {
         const cursiva = Boolean(mapeo.fontCursiva);
         const color = hexToRgb(mapeo.fontColor);
         const font = await getFont(familia, negrita, cursiva);
-        const textoFinal = aplicarFormatoFecha(rc.valor, mapeo.formatoFecha);
+        const textoConFecha = aplicarFormatoFecha(rc.valor, mapeo.formatoFecha);
+        const textoFinal = aplicarTransformTexto(textoConFecha, mapeo.transformTexto);
         try {
           page.drawText(String(textoFinal), {
             x: xLeft,

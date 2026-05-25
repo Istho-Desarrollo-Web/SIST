@@ -4,9 +4,10 @@ import {
   useDraggable, useDroppable,
   PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
-import { X, ChevronLeft, ChevronRight, Save, Bold, Italic } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Save, Bold, Italic, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Select } from '../common/Select';
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 function genKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -194,6 +195,7 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
   );
   const [selectedKey, setSelectedKey] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const mountedRef = useRef(false);
 
@@ -213,18 +215,26 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
   useEffect(() => {
     if (!plantilla?.urlCloudinary) return;
     setLoading(true);
+    setLoadError(null);
     setPdfDoc(null);
     setPageNum(1);
     import('pdfjs-dist').then((pdfjsLib) => {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.min.mjs',
-        import.meta.url
-      ).toString();
-      pdfjsLib.getDocument(plantilla.urlCloudinary).promise.then((doc) => {
-        setPdfDoc(doc);
-        setTotalPages(doc.numPages);
-        setLoading(false);
-      });
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+      pdfjsLib.getDocument({ url: plantilla.urlCloudinary, withCredentials: false }).promise
+        .then((doc) => {
+          setPdfDoc(doc);
+          setTotalPages(doc.numPages);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error('[PDFMapper] Error cargando PDF:', err);
+          setLoadError(err?.message || 'No se pudo cargar el PDF');
+          setLoading(false);
+        });
+    }).catch((err) => {
+      console.error('[PDFMapper] Error importando pdfjs-dist:', err);
+      setLoadError('Error al inicializar el visor PDF');
+      setLoading(false);
     });
   }, [plantilla]);
 
@@ -366,8 +376,33 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
         {/* Panel derecho — visor PDF + inspector */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
           {loading && (
-            <div className="flex items-center justify-center h-48 text-sm text-slate-400">
+            <div className="flex items-center justify-center h-48 text-sm text-slate-400 gap-2">
+              <RefreshCw size={16} className="animate-spin" />
               Cargando PDF...
+            </div>
+          )}
+          {loadError && (
+            <div className="flex flex-col items-center justify-center h-48 gap-3 text-sm">
+              <div className="flex items-center gap-2 text-red-500">
+                <AlertCircle size={16} />
+                {loadError}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoadError(null);
+                  setLoading(true);
+                  import('pdfjs-dist').then((pdfjsLib) => {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+                    pdfjsLib.getDocument({ url: plantilla.urlCloudinary, withCredentials: false }).promise
+                      .then((doc) => { setPdfDoc(doc); setTotalPages(doc.numPages); setLoading(false); })
+                      .catch((err) => { setLoadError(err?.message || 'Error al cargar'); setLoading(false); });
+                  }).catch((err) => { setLoadError(err?.message || 'Error al inicializar'); setLoading(false); });
+                }}
+                className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 underline"
+              >
+                <RefreshCw size={12} /> Reintentar
+              </button>
             </div>
           )}
 
@@ -543,9 +578,24 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
                 />
               </div>
 
-              {/* Vista previa */}
-              <div className="rounded border border-dashed border-slate-200 dark:border-navy-600 bg-white dark:bg-navy-900 px-3 py-2 text-center">
-                <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">Vista previa</p>
+              {/* Transformación de texto */}
+              <div className="flex items-center gap-2 mb-3">
+                <label className="text-xs text-slate-500 dark:text-slate-400 shrink-0">Transformar</label>
+                <Select
+                  value={selectedMapeo.transformTexto || 'ninguno'}
+                  onChange={(v) => updateMapeo(selectedKey, { transformTexto: v })}
+                  options={[
+                    { value: 'ninguno',    label: 'Sin cambios' },
+                    { value: 'mayusculas', label: 'MAYÚSCULAS' },
+                    { value: 'minusculas', label: 'minúsculas' },
+                    { value: 'capitalizar', label: 'Capitalizar Palabras' },
+                  ]}
+                />
+              </div>
+
+              {/* Vista previa — siempre fondo blanco porque el PDF es blanco */}
+              <div className="rounded border border-dashed border-slate-200 dark:border-navy-600 bg-white px-3 py-2 text-center">
+                <p className="text-xs text-slate-400 mb-1">Vista previa</p>
                 <span
                   style={{
                     fontFamily: selectedMapeo.fontFamilia === 'TimesRoman'
@@ -557,6 +607,13 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
                     fontStyle: selectedMapeo.fontCursiva ? 'italic' : 'normal',
                     color: selectedMapeo.fontColor || '#000000',
                     fontSize: `${Math.max(10, Math.min(24, selectedMapeo.fontTamano || 10))}px`,
+                    textTransform: (() => {
+                      const t = selectedMapeo.transformTexto;
+                      if (t === 'mayusculas') return 'uppercase';
+                      if (t === 'minusculas') return 'lowercase';
+                      if (t === 'capitalizar') return 'capitalize';
+                      return 'none';
+                    })(),
                   }}
                 >
                   Texto de ejemplo
