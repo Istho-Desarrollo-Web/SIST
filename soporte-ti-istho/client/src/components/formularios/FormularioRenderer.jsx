@@ -1,19 +1,10 @@
+import { useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Input } from '../common/Input';
 import { Select } from '../common/Select';
 import { DatePicker } from '../common/DatePicker';
 import { FileUploadZone } from '../common/FileUploadZone';
 import { FirmaCanvas } from './FirmaCanvas';
-
-const TIPO_LABELS = {
-  texto_corto: 'Texto corto',
-  texto_largo: 'Texto largo',
-  numero: 'Número',
-  fecha: 'Fecha',
-  seleccion_unica: 'Selección única',
-  seleccion_multiple: 'Selección múltiple',
-  archivo: 'Archivo',
-  firma: 'Firma',
-};
 
 function toArray(raw) {
   if (Array.isArray(raw)) return raw;
@@ -26,22 +17,113 @@ function toArray(raw) {
   return [];
 }
 
-export function FormularioRenderer({ campos = [], valores = {}, onChange, disabled }) {
+function SeccionColapsable({ nombre, children }) {
+  const [expandida, setExpandida] = useState(true);
+  return (
+    <div className="rounded-lg border-2 border-navy-700 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpandida(e => !e)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 bg-navy-700 text-white text-left"
+      >
+        {expandida
+          ? <ChevronDown className="w-4 h-4 shrink-0" />
+          : <ChevronRight className="w-4 h-4 shrink-0" />}
+        <span className="font-semibold text-sm">{nombre}</span>
+      </button>
+      {expandida && (
+        <div className="p-4 flex flex-col gap-5 bg-white dark:bg-navy-800">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function FormularioRenderer({ campos = [], secciones = [], valores = {}, onChange, disabled }) {
   function handleChange(campoId, value) {
     if (onChange) onChange({ ...valores, [campoId]: value });
   }
 
+  // Sin secciones: comportamiento original
+  if (secciones.length === 0) {
+    return (
+      <div className="flex flex-col gap-5">
+        {campos.map(campo => (
+          <CampoInput
+            key={campo.id}
+            campo={campo}
+            value={valores[campo.id] ?? ''}
+            onChange={v => handleChange(campo.id, v)}
+            disabled={disabled}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // Con secciones: agrupar campos por seccionId
+  const seccionMap = new Map(secciones.map(s => [s.id, s]));
+
+  const groups = [];
+
+  // Secciones visibles: render colapsable
+  const seccionesVisibles = secciones.filter(s => s.visibleParaUsuario);
+  for (const sec of seccionesVisibles) {
+    const secCampos = campos
+      .filter(c => c.seccionId === sec.id)
+      .sort((a, b) => a.orden - b.orden);
+    if (secCampos.length > 0) {
+      groups.push({ tipo: 'visible', seccion: sec, campos: secCampos });
+    }
+  }
+
+  // Secciones no visibles: campos flat sin encabezado
+  const seccionesOcultas = secciones.filter(s => !s.visibleParaUsuario);
+  const camposOcultos = campos.filter(c =>
+    c.seccionId && seccionesOcultas.some(s => s.id === c.seccionId)
+  ).sort((a, b) => a.orden - b.orden);
+  if (camposOcultos.length > 0) {
+    groups.push({ tipo: 'oculto', campos: camposOcultos });
+  }
+
+  // Sin sección
+  const camposSinSeccion = campos
+    .filter(c => !c.seccionId || !seccionMap.has(c.seccionId))
+    .sort((a, b) => a.orden - b.orden);
+  if (camposSinSeccion.length > 0) {
+    groups.push({ tipo: 'sin_seccion', campos: camposSinSeccion });
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      {campos.map((campo) => (
-        <CampoInput
-          key={campo.id}
-          campo={campo}
-          value={valores[campo.id] ?? ''}
-          onChange={(v) => handleChange(campo.id, v)}
-          disabled={disabled}
-        />
-      ))}
+      {groups.map((group, i) => {
+        if (group.tipo === 'visible') {
+          return (
+            <SeccionColapsable key={group.seccion.id} nombre={group.seccion.nombre}>
+              {group.campos.map(campo => (
+                <CampoInput
+                  key={campo.id}
+                  campo={campo}
+                  value={valores[campo.id] ?? ''}
+                  onChange={v => handleChange(campo.id, v)}
+                  disabled={disabled}
+                />
+              ))}
+            </SeccionColapsable>
+          );
+        }
+        // Flat (oculto o sin sección)
+        return group.campos.map(campo => (
+          <CampoInput
+            key={campo.id}
+            campo={campo}
+            value={valores[campo.id] ?? ''}
+            onChange={v => handleChange(campo.id, v)}
+            disabled={disabled}
+          />
+        ));
+      })}
     </div>
   );
 }
@@ -105,11 +187,7 @@ function CampoInput({ campo, value, onChange, disabled }) {
     return (
       <div>
         {label}
-        <DatePicker
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-        />
+        <DatePicker value={value} onChange={onChange} disabled={disabled} />
       </div>
     );
   }
@@ -119,13 +197,7 @@ function CampoInput({ campo, value, onChange, disabled }) {
     return (
       <div>
         {label}
-        <Select
-          value={value}
-          onChange={onChange}
-          options={opciones}
-          placeholder="Seleccionar..."
-          disabled={disabled}
-        />
+        <Select value={value} onChange={onChange} options={opciones} placeholder="Seleccionar..." disabled={disabled} />
       </div>
     );
   }
@@ -163,12 +235,7 @@ function CampoInput({ campo, value, onChange, disabled }) {
     return (
       <div>
         {label}
-        <FileUploadZone
-          onFileSelect={(file) => onChange(file)}
-          disabled={disabled}
-          accept="*/*"
-          maxFiles={1}
-        />
+        <FileUploadZone onFileSelect={(file) => onChange(file)} disabled={disabled} accept="*/*" maxFiles={1} />
       </div>
     );
   }
@@ -178,11 +245,7 @@ function CampoInput({ campo, value, onChange, disabled }) {
       <div>
         {label}
         {campo.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{campo.descripcion}</p>}
-        <FirmaCanvas
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-        />
+        <FirmaCanvas value={value} onChange={onChange} disabled={disabled} />
       </div>
     );
   }

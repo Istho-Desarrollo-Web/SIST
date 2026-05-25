@@ -81,6 +81,7 @@ export function FormularioResponderPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <FormularioRenderer
           campos={formulario.campos || []}
+          secciones={formulario.secciones || []}
           valores={valores}
           onChange={setValores}
           disabled={submitting}
