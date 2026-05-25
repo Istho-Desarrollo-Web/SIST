@@ -12,7 +12,7 @@ export const formulariosApi = {
   eliminar: (id) => api.delete(`/formularios/${id}`),
 
   // Campos
-  guardarCampos: (id, campos) => api.post(`/formularios/${id}/campos`, { campos }),
+  guardarCampos: (id, campos, secciones = []) => api.post(`/formularios/${id}/campos`, { campos, secciones }),
 
   // Plantilla y mapeos
   subirPlantilla: (id, formData) =>

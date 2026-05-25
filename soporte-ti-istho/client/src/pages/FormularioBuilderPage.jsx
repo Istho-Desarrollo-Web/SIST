@@ -32,6 +32,7 @@ export function FormularioBuilderPage() {
   const [saving, setSaving] = useState(false);
 
   const [campos, setCampos] = useState([]);
+  const [secciones, setSecciones] = useState([]);
   const [config, setConfig] = useState({ nombre: '', descripcion: '', acceso: 'autenticado', activo: true });
   const [pdfFiles, setPdfFiles] = useState([]);
   const [plantilla, setPlantilla] = useState(null);
@@ -44,7 +45,19 @@ export function FormularioBuilderPage() {
     formulariosApi.obtener(id).then((res) => {
       const f = res.data.data;
       setConfig({ nombre: f.nombre, descripcion: f.descripcion || '', acceso: f.acceso, activo: f.activo });
-      setCampos(f.campos || []);
+
+      const seccionesServer = (f.secciones || []).map(s => ({ ...s, _key: String(s.id) }));
+      setSecciones(seccionesServer);
+
+      const camposServer = (f.campos || []).map(c => ({
+        ...c,
+        _key: String(c.id),
+        _seccionKey: c.seccionId
+          ? (seccionesServer.find(s => s.id === c.seccionId)?._key || String(c.seccionId))
+          : null,
+      }));
+      setCampos(camposServer);
+
       if (f.plantillas && f.plantillas.length > 0) {
         setPlantilla(f.plantillas[0]);
         setMapeoInicial(f.plantillas[0].mapeos || []);
@@ -99,9 +112,20 @@ export function FormularioBuilderPage() {
     }
     setSaving(true);
     try {
-      const res = await formulariosApi.guardarCampos(fId, campos);
-      const savedCampos = res.data.data;
-      setCampos(prev => prev.map((c, i) => ({ ...c, id: savedCampos[i]?.id ?? c.id })));
+      const res = await formulariosApi.guardarCampos(fId, campos, secciones);
+      const { secciones: savedSecciones, campos: savedCampos } = res.data.data;
+
+      const seccionesActualizadas = savedSecciones.map(s => ({ ...s, _key: s._key || String(s.id) }));
+      setSecciones(seccionesActualizadas);
+
+      setCampos(savedCampos.map(c => ({
+        ...c,
+        _key: String(c.id),
+        _seccionKey: c.seccionId
+          ? (seccionesActualizadas.find(s => s.id === c.seccionId)?._key || String(c.seccionId))
+          : null,
+      })));
+
       toast.success('Campos guardados');
     } catch {
       toast.error('Error al guardar campos');
@@ -200,7 +224,12 @@ export function FormularioBuilderPage() {
       {/* Tab: Campos */}
       {tab === 'campos' && (
         <div className="flex flex-col gap-4">
-          <CamposList campos={campos} onChange={setCampos} />
+          <CamposList
+            campos={campos}
+            onChange={setCampos}
+            secciones={secciones}
+            onChangeSecciones={setSecciones}
+          />
           <div className="flex justify-end pt-2">
             <Button onClick={guardarCampos} disabled={saving} className="gap-2">
               <Save className="w-4 h-4" />
