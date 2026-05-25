@@ -469,15 +469,15 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
               <div className="flex gap-2 mb-2">
                 <div className="flex flex-col gap-1 flex-1">
                   <label className="text-xs text-slate-500 dark:text-slate-400">Fuente</label>
-                  <select
+                  <Select
                     value={selectedMapeo.fontFamilia || 'Helvetica'}
-                    onChange={e => updateMapeo(selectedKey, { fontFamilia: e.target.value })}
-                    className="px-2 py-1 text-sm border border-slate-300 dark:border-navy-500 rounded bg-white dark:bg-navy-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                  >
-                    <option value="Helvetica">Helvetica</option>
-                    <option value="TimesRoman">Times New Roman</option>
-                    <option value="Courier">Courier</option>
-                  </select>
+                    onChange={(v) => updateMapeo(selectedKey, { fontFamilia: v })}
+                    options={[
+                      { value: 'Helvetica', label: 'Helvetica' },
+                      { value: 'TimesRoman', label: 'Times New Roman' },
+                      { value: 'Courier', label: 'Courier' },
+                    ]}
+                  />
                 </div>
                 <InspectorInput
                   label="PT"
