@@ -2,8 +2,8 @@ const { PDFDocument } = require('pdf-lib');
 const cloudinary = require('../config/cloudinary');
 const multerUpload = require('../config/multer');
 const {
-  Formulario, FormularioCampo, FormularioPdfPlantilla,
-  FormularioPdfMapeo, Usuario,
+  Formulario, FormularioCampo, FormularioSeccion,
+  FormularioPdfPlantilla, FormularioPdfMapeo, Usuario,
 } = require('../models');
 const { registrarAuditoria } = require('../services/auditoriaService');
 const { ROLES } = require('../utils/constants');
@@ -41,6 +41,7 @@ async function obtener(req, res, next) {
     const formulario = await Formulario.findByPk(req.params.id, {
       include: [
         { model: FormularioCampo, as: 'campos', order: [['orden', 'ASC']] },
+        { model: FormularioSeccion, as: 'secciones', order: [['orden', 'ASC']] },
         {
           model: FormularioPdfPlantilla, as: 'plantillas',
           order: [['created_at', 'DESC']],
@@ -50,7 +51,6 @@ async function obtener(req, res, next) {
     });
     if (!formulario) return res.status(404).json({ success: false, message: 'Formulario no encontrado' });
 
-    // Buscar mapeos en query separada para evitar el LIMIT 1 anidado de Sequelize
     if (formulario.plantillas && formulario.plantillas.length > 0) {
       const mapeos = await FormularioPdfMapeo.findAll({
         where: { plantillaId: formulario.plantillas[0].id },
@@ -66,7 +66,10 @@ async function obtenerPublico(req, res, next) {
   try {
     const formulario = await Formulario.findOne({
       where: { id: req.params.id, acceso: 'publico', activo: true },
-      include: [{ model: FormularioCampo, as: 'campos', order: [['orden', 'ASC']] }],
+      include: [
+        { model: FormularioCampo, as: 'campos', order: [['orden', 'ASC']] },
+        { model: FormularioSeccion, as: 'secciones', order: [['orden', 'ASC']] },
+      ],
     });
     if (!formulario) return res.status(404).json({ success: false, message: 'Formulario no disponible' });
     res.json({ success: true, data: formulario });
@@ -77,7 +80,10 @@ async function obtenerVista(req, res, next) {
   try {
     const formulario = await Formulario.findOne({
       where: { id: req.params.id, activo: true },
-      include: [{ model: FormularioCampo, as: 'campos', order: [['orden', 'ASC']] }],
+      include: [
+        { model: FormularioCampo, as: 'campos', order: [['orden', 'ASC']] },
+        { model: FormularioSeccion, as: 'secciones', order: [['orden', 'ASC']] },
+      ],
     });
     if (!formulario) return res.status(404).json({ success: false, message: 'Formulario no disponible' });
     if (formulario.acceso === 'autenticado' && !req.user) {
@@ -137,30 +143,65 @@ async function eliminar(req, res, next) {
 
 async function guardarCampos(req, res, next) {
   try {
-    const { campos } = req.body;
+    const { campos, secciones = [] } = req.body;
     if (!Array.isArray(campos)) return res.status(400).json({ success: false, message: 'campos debe ser array' });
 
     const formularioId = parseInt(req.params.id);
 
-    // IDs actuales en DB para este formulario
+    // ── Upsert secciones ──────────────────────────────────────────────────
+    const existentesSecciones = await FormularioSeccion.findAll({
+      where: { formularioId }, attributes: ['id'],
+    });
+    const idsSeccionesExistentes = existentesSecciones.map(s => s.id);
+    const idsSeccionesEnviadas = secciones.filter(s => s.id).map(s => parseInt(s.id));
+    const seccionIdsAEliminar = idsSeccionesExistentes.filter(id => !idsSeccionesEnviadas.includes(id));
+    if (seccionIdsAEliminar.length) {
+      await FormularioSeccion.destroy({ where: { id: seccionIdsAEliminar } });
+    }
+
+    const keyToIdMap = new Map();
+    const seccionResults = [];
+    for (const sec of secciones) {
+      const data = {
+        formularioId,
+        nombre: sec.nombre,
+        orden: sec.orden,
+        visibleParaUsuario: Boolean(sec.visibleParaUsuario),
+      };
+      let saved;
+      if (sec.id) {
+        await FormularioSeccion.update(data, { where: { id: sec.id, formularioId } });
+        saved = await FormularioSeccion.findByPk(sec.id);
+      } else {
+        saved = await FormularioSeccion.create(data);
+      }
+      if (sec._key) keyToIdMap.set(sec._key, saved.id);
+      seccionResults.push({ ...saved.toJSON(), _key: sec._key || null });
+    }
+
+    // ── Upsert campos ─────────────────────────────────────────────────────
     const existentes = await FormularioCampo.findAll({ where: { formularioId }, attributes: ['id'] });
     const idsExistentes = existentes.map(c => c.id);
     const idsEnviados = campos.filter(c => c.id).map(c => parseInt(c.id));
-
-    // Eliminar sólo los campos que ya no están en la lista (preserva FK → mapeos no se borran)
     const idsAEliminar = idsExistentes.filter(id => !idsEnviados.includes(id));
     if (idsAEliminar.length) {
       await FormularioCampo.destroy({ where: { id: idsAEliminar } });
     }
 
-    // Upsert: actualizar existentes, crear nuevos
     const resultados = await Promise.all(
-      campos.map(async ({ _key, id, ...c }, i) => {
+      campos.map(async ({ _key, _seccionKey, id, ...c }, i) => {
+        const resolvedSeccionId = _seccionKey
+          ? (keyToIdMap.get(_seccionKey) || c.seccionId || null)
+          : (c.seccionId || null);
+
         const data = {
           ...c,
           formularioId,
           orden: i,
-          opciones: Array.isArray(c.opciones) ? c.opciones : (c.opciones ? JSON.parse(c.opciones) : null),
+          seccionId: resolvedSeccionId,
+          opciones: Array.isArray(c.opciones)
+            ? c.opciones
+            : (c.opciones ? JSON.parse(c.opciones) : null),
         };
         const parsedId = id ? parseInt(id) : null;
         if (parsedId && idsEnviados.includes(parsedId)) {
@@ -171,7 +212,7 @@ async function guardarCampos(req, res, next) {
       })
     );
 
-    res.json({ success: true, data: resultados });
+    res.json({ success: true, data: { secciones: seccionResults, campos: resultados } });
   } catch (err) { next(err); }
 }
 
