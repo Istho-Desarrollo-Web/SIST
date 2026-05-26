@@ -18,7 +18,10 @@ export function Select({ value, onChange, options = [], placeholder = 'Seleccion
         dropRef.current && !dropRef.current.contains(e.target)
       ) setOpen(false);
     }
-    function onScroll() { setOpen(false); }
+    function onScroll(e) {
+      if (dropRef.current && dropRef.current.contains(e.target)) return;
+      setOpen(false);
+    }
     document.addEventListener('mousedown', onOutside);
     document.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', onScroll);
