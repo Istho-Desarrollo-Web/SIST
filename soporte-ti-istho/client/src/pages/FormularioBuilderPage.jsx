@@ -164,8 +164,8 @@ export function FormularioBuilderPage() {
       setMapeoInicial([]);
       setPdfFiles([]);
       toast.success('Plantilla subida');
-    } catch {
-      toast.error('Error al subir plantilla');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Error al subir plantilla');
     }
   }
 

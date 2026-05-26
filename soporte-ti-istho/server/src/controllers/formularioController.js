@@ -229,9 +229,9 @@ async function guardarCampos(req, res, next) {
 }
 
 function _resolverUrlArchivo(req) {
-  // Cloudinary storage: secure_url es una URL https://
-  if (req.file.secure_url) return req.file.secure_url;
-  // Disk storage: path es ruta absoluta → convertir a URL HTTP del servidor
+  // multer-storage-cloudinary pone la URL en req.file.path (= secure_url)
+  if (req.file.path && req.file.path.startsWith('http')) return req.file.path;
+  // Disk: path es ruta absoluta → construir URL HTTP del servidor
   const filename = req.file.filename;
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   return `${baseUrl}/uploads/solicitudes/${filename}`;

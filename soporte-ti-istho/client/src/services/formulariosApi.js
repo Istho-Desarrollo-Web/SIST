@@ -16,9 +16,7 @@ export const formulariosApi = {
 
   // Plantilla y mapeos
   subirPlantilla: (id, formData) =>
-    api.post(`/formularios/${id}/plantilla`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    api.post(`/formularios/${id}/plantilla`, formData, { timeout: 60000 }),
   guardarMapeos: (id, mapeos) => api.post(`/formularios/${id}/mapeos`, { mapeos }),
 
   // Respuestas y PDFs
