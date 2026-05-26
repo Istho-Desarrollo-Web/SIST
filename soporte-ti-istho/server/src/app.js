@@ -42,6 +42,18 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+app.get('/', (_req, res) => {
+  res.json({
+    success: true,
+    app: 'SIST — Sistema Integral de Soporte TI · ISTHO S.A.S.',
+    version: process.env.npm_package_version || '1.0.0',
+    status: 'online',
+    timestamp: new Date(),
+    api: '/api/health',
+  });
+});
+
 app.use('/api', routes);
 
 app.use(errorHandler);
