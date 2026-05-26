@@ -18,6 +18,7 @@ Auditoria.init({
   sequelize,
   modelName: 'Auditoria',
   tableName: 'auditoria',
+  underscored: true,
   updatedAt: false,
 });
 
