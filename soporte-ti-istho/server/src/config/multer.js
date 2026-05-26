@@ -15,10 +15,16 @@ if (hasCloudinary) {
     params: async (req, file) => {
       const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
       const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+      // Nombre base sanitizado: sin acentos, sin caracteres especiales
+      const baseName = path.basename(file.originalname, path.extname(file.originalname))
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+        .replace(/_{2,}/g, '_')
+        .slice(0, 80);
+      const suffix = uuidv4().slice(0, 8);
       return {
         folder: 'sist-solicitudes',
-        public_id: uuidv4(),
-        // raw para PDFs y documentos: entrega pública sin restricciones de transformación
+        public_id: isImage ? `${baseName}_${suffix}` : `${baseName}_${suffix}.${ext}`,
         resource_type: isImage ? 'image' : 'raw',
       };
     },
