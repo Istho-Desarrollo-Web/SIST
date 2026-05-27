@@ -242,18 +242,20 @@ async function subirPlantilla(req, res, next) {
     if (!req.file) return res.status(400).json({ success: false, message: 'Archivo requerido' });
 
     const urlArchivo = _resolverUrlArchivo(req);
-    // Detect AcroForm
-    const fileBuffer = await _descargarBuffer(req.file.path || urlArchivo);
-    const pdfDoc = await PDFDocument.load(fileBuffer).catch(() => null);
+    // Detect AcroForm (opcional — no debe bloquear el guardado si Cloudinary niega la descarga)
     let tieneAcroform = false;
     let camposPDF = [];
-    if (pdfDoc) {
-      try {
-        const fields = pdfDoc.getForm().getFields();
-        tieneAcroform = fields.length > 0;
-        camposPDF = fields.map(f => f.getName());
-      } catch { /* no form */ }
-    }
+    try {
+      const fileBuffer = await _descargarBuffer(req.file.path || urlArchivo);
+      const pdfDoc = await PDFDocument.load(fileBuffer).catch(() => null);
+      if (pdfDoc) {
+        try {
+          const fields = pdfDoc.getForm().getFields();
+          tieneAcroform = fields.length > 0;
+          camposPDF = fields.map(f => f.getName());
+        } catch { /* no form */ }
+      }
+    } catch { /* descarga falló — continuar sin info AcroForm */ }
 
     const plantilla = await FormularioPdfPlantilla.create({
       formularioId: req.params.id,
