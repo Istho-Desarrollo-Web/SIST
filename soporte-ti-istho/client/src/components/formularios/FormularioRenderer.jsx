@@ -40,16 +40,19 @@ function SeccionColapsable({ nombre, children }) {
   );
 }
 
-export function FormularioRenderer({ campos = [], secciones = [], valores = {}, onChange, disabled }) {
+export function FormularioRenderer({ campos = [], secciones = [], valores = {}, onChange, disabled, camposVisibles, seccionesVisibles }) {
   function handleChange(campoId, value) {
     if (onChange) onChange({ ...valores, [campoId]: value });
   }
 
+  const camposFiltrados   = camposVisibles    ? campos.filter(c => camposVisibles.has(c.id))    : campos;
+  const seccionesFiltradas = seccionesVisibles ? secciones.filter(s => seccionesVisibles.has(s.id)) : secciones;
+
   // Sin secciones: comportamiento original
-  if (secciones.length === 0) {
+  if (seccionesFiltradas.length === 0) {
     return (
       <div className="flex flex-col gap-5">
-        {campos.map(campo => (
+        {camposFiltrados.map(campo => (
           <CampoInput
             key={campo.id}
             campo={campo}
@@ -63,14 +66,14 @@ export function FormularioRenderer({ campos = [], secciones = [], valores = {}, 
   }
 
   // Con secciones: agrupar campos por seccionId
-  const seccionMap = new Map(secciones.map(s => [s.id, s]));
+  const seccionMap = new Map(seccionesFiltradas.map(s => [s.id, s]));
 
   const groups = [];
 
-  // Secciones visibles: render colapsable
-  const seccionesVisibles = secciones.filter(s => s.visibleParaUsuario);
-  for (const sec of seccionesVisibles) {
-    const secCampos = campos
+  // Secciones con header visible: render colapsable
+  const seccionesConHeader = seccionesFiltradas.filter(s => s.visibleParaUsuario);
+  for (const sec of seccionesConHeader) {
+    const secCampos = camposFiltrados
       .filter(c => c.seccionId === sec.id)
       .sort((a, b) => a.orden - b.orden);
     if (secCampos.length > 0) {
@@ -79,8 +82,8 @@ export function FormularioRenderer({ campos = [], secciones = [], valores = {}, 
   }
 
   // Secciones no visibles: campos flat sin encabezado
-  const seccionesOcultas = secciones.filter(s => !s.visibleParaUsuario);
-  const camposOcultos = campos.filter(c =>
+  const seccionesOcultas = seccionesFiltradas.filter(s => !s.visibleParaUsuario);
+  const camposOcultos = camposFiltrados.filter(c =>
     c.seccionId && seccionesOcultas.some(s => s.id === c.seccionId)
   ).sort((a, b) => a.orden - b.orden);
   if (camposOcultos.length > 0) {
@@ -88,7 +91,7 @@ export function FormularioRenderer({ campos = [], secciones = [], valores = {}, 
   }
 
   // Sin sección
-  const camposSinSeccion = campos
+  const camposSinSeccion = camposFiltrados
     .filter(c => !c.seccionId || !seccionMap.has(c.seccionId))
     .sort((a, b) => a.orden - b.orden);
   if (camposSinSeccion.length > 0) {
