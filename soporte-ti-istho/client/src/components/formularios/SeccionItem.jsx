@@ -1,7 +1,74 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { ChevronDown, ChevronRight, Pencil, Trash2, Eye, EyeOff, Check, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pencil, Trash2, Eye, EyeOff, Check, X, GitBranch, Plus } from 'lucide-react';
+
+function toArray(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try { const p = JSON.parse(raw); if (Array.isArray(p)) return p; } catch {}
+  }
+  return [];
+}
+
+const TIPOS_TRIGGER_SEC = ['seleccion_unica', 'seleccion_multiple', 'texto_corto', 'numero'];
+
+const OPERADORES_SEC = [
+  { value: 'igual',         label: 'es igual a' },
+  { value: 'diferente',     label: 'es diferente a' },
+  { value: 'contiene',      label: 'contiene' },
+  { value: 'no_contiene',   label: 'no contiene' },
+  { value: 'esta_vacio',    label: 'está vacío' },
+  { value: 'no_esta_vacio', label: 'no está vacío' },
+];
+
+function ReglaRowSeccion({ regla, camposDisponibles, onChange, onDelete }) {
+  const campoSel = camposDisponibles.find(c => String(c.id) === String(regla.campoId));
+  const opcionesValor = campoSel ? toArray(campoSel.opciones) : [];
+  const mostrarValor = !['esta_vacio', 'no_esta_vacio'].includes(regla.operador);
+  return (
+    <div className="flex flex-wrap items-start gap-1 p-2 rounded bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-navy-700">
+      <select
+        value={String(regla.campoId || '')}
+        onChange={e => onChange({ ...regla, campoId: e.target.value, valor: '' })}
+        className="flex-1 min-w-[110px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none"
+      >
+        <option value="">Campo...</option>
+        {camposDisponibles.map(c => <option key={c.id} value={String(c.id)}>{c.etiqueta}</option>)}
+      </select>
+      <select
+        value={regla.operador}
+        onChange={e => onChange({ ...regla, operador: e.target.value })}
+        className="flex-1 min-w-[110px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none"
+      >
+        {OPERADORES_SEC.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
+      </select>
+      {mostrarValor && (
+        opcionesValor.length > 0 ? (
+          <select
+            value={regla.valor || ''}
+            onChange={e => onChange({ ...regla, valor: e.target.value })}
+            className="flex-1 min-w-[80px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none"
+          >
+            <option value="">Valor...</option>
+            {opcionesValor.map(op => <option key={op} value={op}>{op}</option>)}
+          </select>
+        ) : (
+          <input
+            type="text"
+            value={regla.valor || ''}
+            onChange={e => onChange({ ...regla, valor: e.target.value })}
+            placeholder="Valor..."
+            className="flex-1 min-w-[80px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none"
+          />
+        )
+      )}
+      <button type="button" onClick={onDelete} className="text-slate-400 hover:text-red-500 p-0.5">
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
 
 export function SeccionItem({
   seccion,
@@ -9,11 +76,14 @@ export function SeccionItem({
   onRenombrar,
   onToggleVisible,
   onEliminar,
+  onActualizarCondiciones,
+  camposDelFormulario = [],
   children,
 }) {
   const [expandida, setExpandida] = useState(true);
   const [editando, setEditando] = useState(false);
   const [nombreDraft, setNombreDraft] = useState(seccion.nombre);
+  const [panelCondicionesVisible, setPanelCondicionesVisible] = useState(false);
 
   const { setNodeRef, isOver } = useDroppable({ id: `droppable-${seccion._key}` });
 
@@ -107,6 +177,16 @@ export function SeccionItem({
           </button>
         )}
 
+        {/* Toggle condiciones */}
+        <button
+          type="button"
+          title="Visibilidad condicional"
+          onClick={() => setPanelCondicionesVisible(v => !v)}
+          className={`shrink-0 ${seccion.condiciones ? 'text-amber-300 hover:text-amber-200' : 'text-white/60 hover:text-white'}`}
+        >
+          <GitBranch className="w-3.5 h-3.5" />
+        </button>
+
         {/* Eliminar */}
         <button
           type="button"
@@ -120,6 +200,80 @@ export function SeccionItem({
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Panel condiciones */}
+      {panelCondicionesVisible && (() => {
+        const condiciones = seccion.condiciones;
+        const camposDisponibles = camposDelFormulario.filter(c =>
+          c.id && TIPOS_TRIGGER_SEC.includes(c.tipo)
+        );
+        function setCondiciones(cond) {
+          onActualizarCondiciones(seccion._key, cond);
+        }
+        return (
+          <div className="p-3 flex flex-col gap-2 bg-slate-50 dark:bg-navy-850 border-b border-slate-200 dark:border-navy-600">
+            <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer font-semibold">
+              <input
+                type="checkbox"
+                checked={!!condiciones}
+                onChange={e => setCondiciones(
+                  e.target.checked ? { operadorLogico: 'Y', reglas: [] } : null
+                )}
+                className="h-3.5 w-3.5 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+              />
+              Activar visibilidad condicional
+            </label>
+
+            {condiciones && (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-slate-500">Mostrar si se cumplen</span>
+                  <select
+                    value={condiciones.operadorLogico}
+                    onChange={e => setCondiciones({ ...condiciones, operadorLogico: e.target.value })}
+                    className="text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none"
+                  >
+                    <option value="Y">TODAS las reglas</option>
+                    <option value="O">ALGUNA regla</option>
+                  </select>
+                  <span className="text-xs text-slate-500">siguientes reglas:</span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {condiciones.reglas.map((regla, idx) => (
+                    <ReglaRowSeccion
+                      key={idx}
+                      regla={regla}
+                      camposDisponibles={camposDisponibles}
+                      onChange={r => {
+                        const reglas = [...condiciones.reglas];
+                        reglas[idx] = r;
+                        setCondiciones({ ...condiciones, reglas });
+                      }}
+                      onDelete={() => {
+                        const reglas = condiciones.reglas.filter((_, i) => i !== idx);
+                        setCondiciones({ ...condiciones, reglas });
+                      }}
+                    />
+                  ))}
+                </div>
+                {condiciones.reglas.length < 10 && camposDisponibles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setCondiciones({
+                      ...condiciones,
+                      reglas: [...condiciones.reglas, { campoId: '', operador: 'igual', valor: '' }],
+                    })}
+                    className="text-xs text-orange-600 hover:text-orange-700 flex items-center gap-1 self-start"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Agregar regla
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Cuerpo — campos */}
       {expandida && (
