@@ -1,10 +1,89 @@
 import { useForm, Controller } from 'react-hook-form';
 import { useState, useEffect } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronRight, GitBranch } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Select } from '../common/Select';
 import { Button } from '../common/Button';
+
+function toArray(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try { const p = JSON.parse(raw); if (Array.isArray(p)) return p; } catch {}
+  }
+  return [];
+}
+
+const TIPOS_TRIGGER = ['seleccion_unica', 'seleccion_multiple', 'texto_corto', 'numero'];
+
+const OPERADORES = [
+  { value: 'igual',         label: 'es igual a' },
+  { value: 'diferente',     label: 'es diferente a' },
+  { value: 'contiene',      label: 'contiene' },
+  { value: 'no_contiene',   label: 'no contiene' },
+  { value: 'esta_vacio',    label: 'está vacío' },
+  { value: 'no_esta_vacio', label: 'no está vacío' },
+];
+
+function ReglaRow({ regla, camposDisponibles, onChange, onDelete }) {
+  const campoSeleccionado = camposDisponibles.find(
+    c => String(c.id) === String(regla.campoId)
+  );
+  const opcionesValor = campoSeleccionado ? toArray(campoSeleccionado.opciones) : [];
+  const mostrarValor = !['esta_vacio', 'no_esta_vacio'].includes(regla.operador);
+
+  return (
+    <div className="flex flex-wrap items-start gap-1.5 p-2 rounded bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-navy-600">
+      <select
+        value={String(regla.campoId || '')}
+        onChange={e => onChange({ ...regla, campoId: e.target.value, valor: '' })}
+        className="flex-1 min-w-[120px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orange-500/50"
+      >
+        <option value="">Campo disparador...</option>
+        {camposDisponibles.map(c => (
+          <option key={c.id} value={String(c.id)}>{c.etiqueta}</option>
+        ))}
+      </select>
+
+      <select
+        value={regla.operador}
+        onChange={e => onChange({ ...regla, operador: e.target.value })}
+        className="flex-1 min-w-[120px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orange-500/50"
+      >
+        {OPERADORES.map(op => (
+          <option key={op.value} value={op.value}>{op.label}</option>
+        ))}
+      </select>
+
+      {mostrarValor && (
+        opcionesValor.length > 0 ? (
+          <select
+            value={regla.valor || ''}
+            onChange={e => onChange({ ...regla, valor: e.target.value })}
+            className="flex-1 min-w-[100px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orange-500/50"
+          >
+            <option value="">Valor...</option>
+            {opcionesValor.map(op => (
+              <option key={op} value={op}>{op}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="text"
+            value={regla.valor || ''}
+            onChange={e => onChange({ ...regla, valor: e.target.value })}
+            placeholder="Valor..."
+            className="flex-1 min-w-[100px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orange-500/50"
+          />
+        )
+      )}
+
+      <button type="button" onClick={onDelete} className="text-slate-400 hover:text-red-500 p-1">
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
 
 const TIPOS = [
   { value: 'texto_corto', label: 'Texto corto' },
@@ -18,7 +97,7 @@ const TIPOS = [
   { value: 'grilla', label: 'Grilla de calificación' },
 ];
 
-export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial }) {
+export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial, camposDelFormulario = [] }) {
   const { register, handleSubmit, control, watch, reset, setValue } = useForm({
     defaultValues: {
       tipo: 'texto_corto',
@@ -35,6 +114,8 @@ export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial }) {
   const [grillaColumnas, setGrillaColumnas] = useState(['B', 'R', 'M', 'N/A']);
   const [grillaFilas, setGrillaFilas] = useState(['Fila 1']);
   const [conObservaciones, setConObservaciones] = useState(false);
+  const [condiciones, setCondiciones] = useState(null);
+  const [panelCondicionesVisible, setPanelCondicionesVisible] = useState(false);
   const tipo = watch('tipo');
 
   useEffect(() => {
@@ -57,12 +138,21 @@ export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial }) {
         setGrillaFilas(['Fila 1']);
         setConObservaciones(false);
       }
+      if (campoInicial?.condiciones) {
+        setCondiciones(campoInicial.condiciones);
+        setPanelCondicionesVisible(true);
+      } else {
+        setCondiciones(null);
+        setPanelCondicionesVisible(false);
+      }
     } else {
       reset({ tipo: 'texto_corto', etiqueta: '', descripcion: '', placeholder: '', requerido: false, opciones: [] });
       setOpciones([]);
       setGrillaColumnas(['B', 'R', 'M', 'N/A']);
       setGrillaFilas(['Fila 1']);
       setConObservaciones(false);
+      setCondiciones(null);
+      setPanelCondicionesVisible(false);
     }
   }, [campoInicial, reset, isOpen]);
 
@@ -90,7 +180,7 @@ export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial }) {
     } else {
       opcionesFinales = undefined;
     }
-    onSave({ ...data, opciones: opcionesFinales });
+    onSave({ ...data, opciones: opcionesFinales, condiciones: condiciones || null });
     onClose();
   }
 
@@ -269,6 +359,107 @@ export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial }) {
           <input type="checkbox" {...register('requerido')} className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500" />
           Campo requerido
         </label>
+
+        {/* Panel visibilidad condicional */}
+        {(() => {
+          const camposDisponibles = camposDelFormulario.filter(
+            c => c.id && TIPOS_TRIGGER.includes(c.tipo)
+          );
+          return (
+            <div className="border border-slate-200 dark:border-navy-600 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setPanelCondicionesVisible(v => !v)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-navy-900 hover:bg-slate-100 dark:hover:bg-navy-700"
+              >
+                <span className="flex items-center gap-2">
+                  <GitBranch className="w-3.5 h-3.5" />
+                  Visibilidad condicional
+                </span>
+                {panelCondicionesVisible
+                  ? <ChevronDown className="w-3.5 h-3.5" />
+                  : <ChevronRight className="w-3.5 h-3.5" />}
+              </button>
+
+              {panelCondicionesVisible && (
+                <div className="p-3 flex flex-col gap-3">
+                  <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!condiciones}
+                      onChange={e => setCondiciones(
+                        e.target.checked ? { operadorLogico: 'Y', reglas: [] } : null
+                      )}
+                      className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+                    />
+                    Activar visibilidad condicional
+                  </label>
+
+                  {condiciones && (
+                    <>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">Mostrar si se cumplen</span>
+                        <select
+                          value={condiciones.operadorLogico}
+                          onChange={e => setCondiciones({ ...condiciones, operadorLogico: e.target.value })}
+                          className="text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-500/50"
+                        >
+                          <option value="Y">TODAS las reglas</option>
+                          <option value="O">ALGUNA regla</option>
+                        </select>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">siguientes reglas:</span>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {condiciones.reglas.map((regla, idx) => (
+                          <ReglaRow
+                            key={idx}
+                            regla={regla}
+                            camposDisponibles={camposDisponibles}
+                            onChange={r => {
+                              const reglas = [...condiciones.reglas];
+                              reglas[idx] = r;
+                              setCondiciones({ ...condiciones, reglas });
+                            }}
+                            onDelete={() => {
+                              const reglas = condiciones.reglas.filter((_, i) => i !== idx);
+                              setCondiciones({ ...condiciones, reglas });
+                            }}
+                          />
+                        ))}
+                        {condiciones.reglas.length === 0 && (
+                          <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+                            Sin reglas — el campo siempre será visible
+                          </p>
+                        )}
+                      </div>
+
+                      {condiciones.reglas.length < 10 && camposDisponibles.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setCondiciones({
+                            ...condiciones,
+                            reglas: [...condiciones.reglas, { campoId: '', operador: 'igual', valor: '' }],
+                          })}
+                          className="text-xs text-orange-600 hover:text-orange-700 flex items-center gap-1 self-start"
+                        >
+                          <Plus className="w-3 h-3" />
+                          Agregar regla
+                        </button>
+                      )}
+
+                      {camposDisponibles.length === 0 && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          Guarda primero los demás campos para poder referenciarlos en reglas.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="flex gap-2 pt-2">
           <Button type="submit" className="flex-1">
