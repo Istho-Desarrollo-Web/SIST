@@ -3,7 +3,7 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const cloudinary = require('../config/cloudinary');
 const {
-  Formulario, FormularioCampo, FormularioPdfPlantilla,
+  Formulario, FormularioCampo, FormularioSeccion, FormularioPdfPlantilla,
   FormularioPdfMapeo, FormularioRespuesta, RespuestaCampo,
   FormularioPdfGenerado, Usuario, Solicitud,
 } = require('../models');
@@ -11,12 +11,32 @@ const { registrarAuditoria } = require('../services/auditoriaService');
 const { llenarPDF } = require('../services/pdfService');
 const { ROLES } = require('../utils/constants');
 
+function evaluarCondicion(condicion, valores) {
+  if (!condicion || !condicion.reglas || condicion.reglas.length === 0) return true;
+  const resultados = condicion.reglas.map(regla => {
+    const val = valores[regla.campoId] ?? valores[String(regla.campoId)];
+    const str = Array.isArray(val) ? val.join(', ') : String(val ?? '');
+    const reglVal = String(regla.valor ?? '');
+    switch (regla.operador) {
+      case 'igual':         return Array.isArray(val) ? val.includes(regla.valor) : str === reglVal;
+      case 'diferente':     return Array.isArray(val) ? !val.includes(regla.valor) : str !== reglVal;
+      case 'contiene':      return Array.isArray(val) ? val.includes(regla.valor) : str.includes(reglVal);
+      case 'no_contiene':   return Array.isArray(val) ? !val.includes(regla.valor) : !str.includes(reglVal);
+      case 'esta_vacio':    return val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
+      case 'no_esta_vacio': return val !== null && val !== undefined && val !== '' && !(Array.isArray(val) && val.length === 0);
+      default: return true;
+    }
+  });
+  return condicion.operadorLogico === 'O' ? resultados.some(Boolean) : resultados.every(Boolean);
+}
+
 async function responder(req, res, next) {
   try {
     const formulario = await Formulario.findOne({
       where: { id: req.params.id, activo: true },
       include: [
         { model: FormularioCampo, as: 'campos' },
+        { model: FormularioSeccion, as: 'secciones' },
         {
           model: FormularioPdfPlantilla, as: 'plantillas',
           order: [['created_at', 'DESC']],
@@ -45,12 +65,42 @@ async function responder(req, res, next) {
     });
 
     const { campos: valoresCampos = {} } = req.body;
+
+    // Determinar secciones visibles
+    const seccionesVisiblesSet = new Set(
+      (formulario.secciones || [])
+        .filter(s => !s.condiciones || evaluarCondicion(s.condiciones, valoresCampos))
+        .map(s => s.id)
+    );
+
+    // Determinar campos visibles
+    const camposVisiblesSet = new Set(
+      formulario.campos.filter(campo => {
+        if (campo.seccionId && !seccionesVisiblesSet.has(campo.seccionId)) return false;
+        return !campo.condiciones || evaluarCondicion(campo.condiciones, valoresCampos);
+      }).map(c => c.id)
+    );
+
+    // Validar campos requeridos visibles
+    for (const campo of formulario.campos) {
+      if (!camposVisiblesSet.has(campo.id) || !campo.requerido) continue;
+      const valor = valoresCampos[campo.id];
+      const estaVacio = valor === undefined || valor === null || valor === ''
+        || (Array.isArray(valor) && valor.length === 0);
+      if (estaVacio) {
+        return res.status(400).json({
+          success: false,
+          message: `El campo "${campo.etiqueta}" es requerido`,
+        });
+      }
+    }
+
     const respuestaCamposData = [];
 
     for (const campo of formulario.campos) {
+      if (!camposVisiblesSet.has(campo.id)) continue;
       const valor = valoresCampos[campo.id];
       if (valor !== undefined && valor !== null && valor !== '') {
-        // If base64 (firma), upload to Cloudinary
         if (campo.tipo === 'firma' && typeof valor === 'string' && valor.startsWith('data:image/')) {
           const uploadResult = await _uploadBase64(valor, `sist-firmas/${respuesta.id}`, req);
           respuestaCamposData.push({
@@ -58,6 +108,12 @@ async function responder(req, res, next) {
             campoId: campo.id,
             archivoUrl: uploadResult.secure_url,
             archivoPublicId: uploadResult.public_id,
+          });
+        } else if (campo.tipo === 'grilla') {
+          respuestaCamposData.push({
+            respuestaId: respuesta.id,
+            campoId: campo.id,
+            valor: JSON.stringify(valor),
           });
         } else {
           respuestaCamposData.push({
@@ -76,7 +132,7 @@ async function responder(req, res, next) {
     if (formulario.plantillas && formulario.plantillas.length > 0) {
       const plantilla = formulario.plantillas[0];
       try {
-        const pdfBuffer = await llenarPDF(plantilla, plantillaMapeos, respuestaCampos);
+        const pdfBuffer = await llenarPDF(plantilla, plantillaMapeos, respuestaCampos, formulario.campos);
         const count = await FormularioPdfGenerado.count({
           include: [{ model: FormularioRespuesta, as: 'respuesta', where: { formularioId: formulario.id }, required: true }],
         });
