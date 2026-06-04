@@ -128,6 +128,108 @@ export function FormularioRenderer({ campos = [], secciones = [], valores = {}, 
   );
 }
 
+function CampoGrilla({ campo, value, onChange, disabled }) {
+  const opts = (campo.opciones && typeof campo.opciones === 'object' && !Array.isArray(campo.opciones))
+    ? campo.opciones
+    : {};
+  const columnas = Array.isArray(opts.columnas) ? opts.columnas : [];
+  const filas = Array.isArray(opts.filas) ? opts.filas : [];
+  const conObs = Boolean(opts.conObservaciones);
+
+  const entries = Array.isArray(value) ? value : [];
+
+  function getEntry(filaIdx) {
+    return entries.find(e => e.fila === filaIdx) || { fila: filaIdx, columna: null, observacion: '' };
+  }
+
+  function setEntry(filaIdx, patch) {
+    const next = filas.map((_, idx) => {
+      const e = getEntry(idx);
+      return idx === filaIdx ? { ...e, ...patch } : e;
+    });
+    onChange(next);
+  }
+
+  return (
+    <div>
+      <span className="flex items-center gap-1 text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+        {campo.etiqueta}
+        {campo.requerido && <span className="text-orange-500">*</span>}
+      </span>
+      {campo.descripcion && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{campo.descripcion}</p>
+      )}
+      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-navy-600">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="text-left px-3 py-2 bg-slate-100 dark:bg-navy-700 border-b border-slate-200 dark:border-navy-600 font-medium text-slate-600 dark:text-slate-300 text-xs min-w-[140px]" />
+              {columnas.map(col => (
+                <th
+                  key={col}
+                  className="px-3 py-2 bg-slate-100 dark:bg-navy-700 border-b border-slate-200 dark:border-navy-600 font-medium text-slate-600 dark:text-slate-300 text-xs text-center whitespace-nowrap"
+                >
+                  {col}
+                </th>
+              ))}
+              {conObs && (
+                <th className="px-3 py-2 bg-slate-100 dark:bg-navy-700 border-b border-slate-200 dark:border-navy-600 font-medium text-slate-600 dark:text-slate-300 text-xs text-left whitespace-nowrap min-w-[160px]">
+                  Observaciones
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila, filaIdx) => {
+              const entry = getEntry(filaIdx);
+              return (
+                <tr
+                  key={filaIdx}
+                  className={filaIdx % 2 === 0
+                    ? 'bg-white dark:bg-navy-800'
+                    : 'bg-slate-50 dark:bg-navy-900'}
+                >
+                  <td className="px-3 py-2 border-b border-slate-100 dark:border-navy-700 text-slate-700 dark:text-slate-300 text-xs">
+                    {fila}
+                  </td>
+                  {columnas.map(col => (
+                    <td
+                      key={col}
+                      className="px-3 py-2 border-b border-slate-100 dark:border-navy-700 text-center"
+                    >
+                      <input
+                        type="radio"
+                        name={`grilla-${campo.id}-fila${filaIdx}`}
+                        checked={entry.columna === col}
+                        onChange={() => setEntry(filaIdx, { columna: col })}
+                        disabled={disabled}
+                        className="h-4 w-4 text-orange-500 focus:ring-orange-500 cursor-pointer"
+                        title={col}
+                      />
+                    </td>
+                  ))}
+                  {conObs && (
+                    <td className="px-3 py-2 border-b border-slate-100 dark:border-navy-700">
+                      <input
+                        type="text"
+                        value={entry.observacion || ''}
+                        onChange={e => setEntry(filaIdx, { observacion: e.target.value })}
+                        disabled={disabled}
+                        placeholder="Observación..."
+                        className="w-full px-2 py-1 rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500/50 disabled:opacity-60"
+                      />
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function CampoInput({ campo, value, onChange, disabled }) {
   const label = (
     <span className="flex items-center gap-1 text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -247,6 +349,17 @@ function CampoInput({ campo, value, onChange, disabled }) {
         {campo.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{campo.descripcion}</p>}
         <FirmaCanvas value={value} onChange={onChange} disabled={disabled} />
       </div>
+    );
+  }
+
+  if (campo.tipo === 'grilla') {
+    return (
+      <CampoGrilla
+        campo={campo}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+      />
     );
   }
 
