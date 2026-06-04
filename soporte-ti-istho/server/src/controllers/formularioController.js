@@ -172,6 +172,7 @@ async function guardarCampos(req, res, next) {
         nombre: sec.nombre,
         orden: sec.orden,
         visibleParaUsuario: Boolean(sec.visibleParaUsuario),
+        condiciones: sec.condiciones || null,
       };
       let saved;
       if (sec.id) {
@@ -209,6 +210,11 @@ async function guardarCampos(req, res, next) {
             if (!c.opciones) return null;
             try { return JSON.parse(c.opciones); }
             catch { return null; }
+          })(),
+          condiciones: (() => {
+            if (!c.condiciones) return null;
+            if (typeof c.condiciones === 'object') return c.condiciones;
+            try { return JSON.parse(c.condiciones); } catch { return null; }
           })(),
         };
         const parsedId = id ? parseInt(id) : null;
