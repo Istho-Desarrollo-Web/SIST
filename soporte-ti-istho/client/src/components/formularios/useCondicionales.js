@@ -5,22 +5,28 @@ function evaluar(condicion, valores) {
   const resultados = condicion.reglas.map(regla => {
     const val = valores[regla.campoId];
     const str = Array.isArray(val) ? val.join(', ') : String(val ?? '');
+    const reglVal = String(regla.valor ?? '');
     switch (regla.operador) {
-      case 'igual':         return str === String(regla.valor ?? '');
-      case 'diferente':     return str !== String(regla.valor ?? '');
-      case 'contiene':      return Array.isArray(val)
-        ? val.includes(regla.valor)
-        : str.includes(String(regla.valor ?? ''));
-      case 'no_contiene':   return Array.isArray(val)
-        ? !val.includes(regla.valor)
-        : !str.includes(String(regla.valor ?? ''));
-      case 'esta_vacio':    return !val
-        || (Array.isArray(val) && val.length === 0)
-        || str === '';
-      case 'no_esta_vacio': return !!val
-        && !(Array.isArray(val) && val.length === 0)
-        && str !== '';
-      default: return true;
+      case 'igual':
+        return Array.isArray(val) ? val.includes(regla.valor) : str === reglVal;
+      case 'diferente':
+        return Array.isArray(val) ? !val.includes(regla.valor) : str !== reglVal;
+      case 'contiene':
+        return Array.isArray(val)
+          ? val.includes(regla.valor)
+          : str.includes(reglVal);
+      case 'no_contiene':
+        return Array.isArray(val)
+          ? !val.includes(regla.valor)
+          : !str.includes(reglVal);
+      case 'esta_vacio':
+        return val === null || val === undefined || val === ''
+          || (Array.isArray(val) && val.length === 0);
+      case 'no_esta_vacio':
+        return val !== null && val !== undefined && val !== ''
+          && !(Array.isArray(val) && val.length === 0);
+      default:
+        return true;
     }
   });
   return condicion.operadorLogico === 'O'
@@ -37,7 +43,7 @@ export function useCondicionales(campos, secciones, valores) {
       }
     }
     return set;
-  }, [campos, secciones, valores]);
+  }, [campos, valores]);
 
   const seccionesVisibles = useMemo(() => {
     const set = new Set();
