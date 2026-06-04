@@ -18,6 +18,7 @@ FormularioSeccion.init({
     defaultValue: false,
     field: 'visible_para_usuario',
   },
+  condiciones: { type: DataTypes.JSON },
 }, {
   sequelize,
   modelName: 'FormularioSeccion',

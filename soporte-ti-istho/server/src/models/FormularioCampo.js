@@ -19,7 +19,7 @@ FormularioCampo.init({
   tipo: {
     type: DataTypes.ENUM(
       'texto_corto', 'texto_largo', 'numero', 'fecha',
-      'seleccion_unica', 'seleccion_multiple', 'archivo', 'firma'
+      'seleccion_unica', 'seleccion_multiple', 'archivo', 'firma', 'grilla'
     ),
     allowNull: false,
   },
@@ -29,6 +29,7 @@ FormularioCampo.init({
   requerido: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   orden: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   opciones: { type: DataTypes.JSON },
+  condiciones: { type: DataTypes.JSON },
 }, {
   sequelize,
   modelName: 'FormularioCampo',
