@@ -17,7 +17,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import {
   GripVertical, Pencil, Trash2, Plus, FolderPlus,
-  Type, AlignLeft, Hash, Calendar, CircleDot, CheckSquare, Paperclip, PenLine,
+  Type, AlignLeft, Hash, Calendar, CircleDot, CheckSquare, Paperclip, PenLine, LayoutGrid,
 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { CampoEditorModal } from './CampoEditorModal';
@@ -32,6 +32,7 @@ const TIPO_ICONS = {
   seleccion_multiple: CheckSquare,
   archivo: Paperclip,
   firma: PenLine,
+  grilla: LayoutGrid,
 };
 
 function TipoIcon({ tipo }) {
@@ -235,6 +236,12 @@ export function CamposList({ campos = [], onChange, secciones = [], onChangeSecc
     onChangeSecciones(secciones.filter(s => s._key !== key));
   }
 
+  function handleActualizarCondicionesSeccion(key, condiciones) {
+    onChangeSecciones(secciones.map(s =>
+      s._key === key ? { ...s, condiciones: condiciones || null } : s
+    ));
+  }
+
   const editandoCampo = editandoKey !== null ? campos.find(c => c._key === editandoKey) : null;
 
   return (
@@ -276,6 +283,8 @@ export function CamposList({ campos = [], onChange, secciones = [], onChangeSecc
             onRenombrar={handleRenombrarSeccion}
             onToggleVisible={handleToggleVisible}
             onEliminar={handleEliminarSeccion}
+            onActualizarCondiciones={handleActualizarCondicionesSeccion}
+            camposDelFormulario={campos.filter(c => c.id)}
           >
             {(camposBySec[seccion._key] || []).map(campo => (
               <SortableCampo
@@ -312,6 +321,7 @@ export function CamposList({ campos = [], onChange, secciones = [], onChangeSecc
         onClose={() => { setShowModal(false); setEditandoKey(null); }}
         onSave={handleSaveCampo}
         campoInicial={editandoCampo || null}
+        camposDelFormulario={campos.filter(c => c.id && c._key !== editandoKey)}
       />
     </div>
   );
