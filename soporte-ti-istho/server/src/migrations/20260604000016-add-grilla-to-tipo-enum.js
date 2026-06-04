@@ -12,6 +12,9 @@ module.exports = {
     });
   },
   async down(queryInterface) {
+    await queryInterface.sequelize.query(
+      `UPDATE formulario_campos SET tipo = 'texto_corto' WHERE tipo = 'grilla'`
+    );
     await queryInterface.changeColumn('formulario_campos', 'tipo', {
       type: DataTypes.ENUM(
         'texto_corto', 'texto_largo', 'numero', 'fecha',
