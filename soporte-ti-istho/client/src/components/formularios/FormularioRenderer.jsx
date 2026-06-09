@@ -139,6 +139,20 @@ function CampoGrilla({ campo, value, onChange, disabled }) {
   const filas = Array.isArray(opts.filas) ? opts.filas : [];
   const conObs = Boolean(opts.conObservaciones);
 
+  if (filas.length === 0 || columnas.length === 0) {
+    return (
+      <div>
+        <span className="flex items-center gap-1 text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          {campo.etiqueta}
+          {campo.requerido && <span className="text-orange-500">*</span>}
+        </span>
+        <div className="rounded-lg border border-dashed border-slate-300 dark:border-navy-600 px-4 py-3 text-xs text-center text-slate-400 dark:text-slate-500">
+          Campo de tabla sin filas o columnas configuradas.
+        </div>
+      </div>
+    );
+  }
+
   const entries = Array.isArray(value) ? value : [];
 
   function getEntry(filaIdx) {

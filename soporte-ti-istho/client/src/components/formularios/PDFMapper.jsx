@@ -471,6 +471,42 @@ export function PDFMapper({ campos = [], plantilla, formularioId, mapeoInicial =
                 Inspector: <span className="font-normal">{selectedMapeo.etiqueta}</span>
                 <span className="ml-2 text-slate-400 dark:text-slate-500 font-normal">— Página {selectedMapeo.pagina}</span>
               </p>
+              {/* Info grilla — solo para tipo grilla */}
+              {selectedCampo?.tipo === 'grilla' && (() => {
+                const opts = (selectedCampo.opciones && typeof selectedCampo.opciones === 'object' && !Array.isArray(selectedCampo.opciones))
+                  ? selectedCampo.opciones : {};
+                const filas = Array.isArray(opts.filas) ? opts.filas : [];
+                const columnas = Array.isArray(opts.columnas) ? opts.columnas : [];
+                const fontPt = selectedMapeo.fontTamano || 10;
+                const altoPct = selectedMapeo.alto || 5;
+                const estimMaxRows = Math.floor(((altoPct / 100) * 841) / (fontPt + 2));
+                const pocasAlto = filas.length > 0 && estimMaxRows < filas.length;
+                return (
+                  <div className="mb-3 p-2 rounded bg-navy-50 dark:bg-navy-900/60 border border-navy-200 dark:border-navy-700">
+                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                      Tabla — {filas.length} fila{filas.length !== 1 ? 's' : ''}
+                    </p>
+                    {columnas.length > 0 && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                        Columnas: {columnas.join(' · ')}
+                      </p>
+                    )}
+                    {pocasAlto ? (
+                      <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        Alto actual muestra ~{estimMaxRows} de {filas.length} filas. Aumenta el Alto %.
+                      </p>
+                    ) : filas.length > 0 ? (
+                      <p className="text-xs text-cgreen-700 dark:text-cgreen-400">
+                        Espacio para {filas.length} filas (máx ~{estimMaxRows} a {fontPt}pt).
+                      </p>
+                    ) : (
+                      <p className="text-xs text-slate-400">Sin filas configuradas en este campo.</p>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Posición y tamaño */}
               <div className="flex flex-wrap gap-3 mb-4">
                 {selectedCampo?.tipo === 'fecha' && (
@@ -607,20 +643,22 @@ export function PDFMapper({ campos = [], plantilla, formularioId, mapeoInicial =
                 />
               </div>
 
-              {/* Transformación de texto */}
-              <div className="flex items-center gap-2 mb-3">
-                <label className="text-xs text-slate-500 dark:text-slate-400 shrink-0">Transformar</label>
-                <Select
-                  value={selectedMapeo.transformTexto || 'ninguno'}
-                  onChange={(v) => updateMapeo(selectedKey, { transformTexto: v })}
-                  options={[
-                    { value: 'ninguno',    label: 'Sin cambios' },
-                    { value: 'mayusculas', label: 'MAYÚSCULAS' },
-                    { value: 'minusculas', label: 'minúsculas' },
-                    { value: 'capitalizar', label: 'Capitalizar Palabras' },
-                  ]}
-                />
-              </div>
+              {/* Transformación de texto — no aplica para grilla */}
+              {selectedCampo?.tipo !== 'grilla' && (
+                <div className="flex items-center gap-2 mb-3">
+                  <label className="text-xs text-slate-500 dark:text-slate-400 shrink-0">Transformar</label>
+                  <Select
+                    value={selectedMapeo.transformTexto || 'ninguno'}
+                    onChange={(v) => updateMapeo(selectedKey, { transformTexto: v })}
+                    options={[
+                      { value: 'ninguno',    label: 'Sin cambios' },
+                      { value: 'mayusculas', label: 'MAYÚSCULAS' },
+                      { value: 'minusculas', label: 'minúsculas' },
+                      { value: 'capitalizar', label: 'Capitalizar Palabras' },
+                    ]}
+                  />
+                </div>
+              )}
 
               {/* Vista previa — siempre fondo blanco porque el PDF es blanco */}
               <div className="rounded border border-dashed border-slate-200 dark:border-navy-600 bg-white px-3 py-2 text-center">
@@ -645,7 +683,7 @@ export function PDFMapper({ campos = [], plantilla, formularioId, mapeoInicial =
                     })(),
                   }}
                 >
-                  Texto de ejemplo
+                  {selectedCampo?.tipo === 'grilla' ? 'Fila de ejemplo: Sí' : 'Texto de ejemplo'}
                 </span>
               </div>
             </div>
