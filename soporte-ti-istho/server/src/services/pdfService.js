@@ -34,12 +34,17 @@ function aplicarFormatoFecha(valor, formatoFecha) {
   return valor;
 }
 
-async function llenarPDF(plantilla, mapeos, respuestaCampos) {
+async function llenarPDF(plantilla, mapeos, respuestaCampos, campos = []) {
   const resp = await axios.get(plantilla.urlCloudinary, { responseType: 'arraybuffer' });
   const pdfDoc = await PDFDocument.load(resp.data);
 
   const campoMap = {};
   for (const rc of respuestaCampos) campoMap[rc.campoId] = rc;
+
+  const campoOpcionesMap = {};
+  for (const campo of campos) {
+    campoOpcionesMap[campo.id] = campo.opciones;
+  }
 
   console.log(`[pdfService] mapeos=${mapeos.length}, respuestaCampos=${respuestaCampos.length}`);
   console.log('[pdfService] campoMap keys:', Object.keys(campoMap));
@@ -114,6 +119,17 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos) {
       const xLeft = ((mapeo.posX - chipAncho / 2) / 100) * width;
       const yCentro = height - (mapeo.posY / 100) * height;
 
+      // Detectar si el valor es una grilla
+      let grillaData = null;
+      if (rc.valor) {
+        try {
+          const parsed = JSON.parse(rc.valor);
+          if (Array.isArray(parsed) && parsed.length > 0 && 'columna' in parsed[0]) {
+            grillaData = parsed;
+          }
+        } catch { /* no es JSON */ }
+      }
+
       if (rc.archivoUrl) {
         try {
           const imgResp = await axios.get(rc.archivoUrl, { responseType: 'arraybuffer' });
@@ -128,6 +144,29 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos) {
           });
         } catch (imgErr) {
           console.warn(`[pdfService] imagen fallo campoId=${mapeo.campoId}:`, imgErr.message);
+        }
+      } else if (grillaData) {
+        const opts = campoOpcionesMap[mapeo.campoId] || {};
+        const filasLabels = Array.isArray(opts.filas) ? opts.filas : [];
+        const conObs = Boolean(opts.conObservaciones);
+        const fontSize = Number(mapeo.fontTamano) || 8;
+        const font = await getFont('Helvetica', false, false);
+        const color = hexToRgb(mapeo.fontColor || '#000000');
+        const areaH = (chipAlto / 100) * height;
+        const lineHeight = fontSize + 2;
+        const maxLineas = Math.floor(areaH / lineHeight);
+        const yInicio = yCentro + areaH / 2 - fontSize;
+
+        for (let i = 0; i < Math.min(grillaData.length, maxLineas); i++) {
+          const entry = grillaData[i];
+          const filaLabel = filasLabels[entry.fila] || `Fila ${entry.fila + 1}`;
+          const colText = entry.columna || '—';
+          const obsText = conObs && entry.observacion ? ` (${entry.observacion})` : '';
+          const texto = `${filaLabel}: ${colText}${obsText}`;
+          const y = yInicio - i * lineHeight;
+          try {
+            page.drawText(texto, { x: xLeft, y, size: fontSize, font, color });
+          } catch { /* skip */ }
         }
       } else if (rc.valor) {
         const fontSize = Number(mapeo.fontTamano) || 10;
