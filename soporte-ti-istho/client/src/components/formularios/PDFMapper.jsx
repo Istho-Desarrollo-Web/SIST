@@ -196,6 +196,7 @@ export function PDFMapper({ campos = [], plantilla, formularioId, mapeoInicial =
   const [selectedKey, setSelectedKey] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [isAuthError, setIsAuthError] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const mountedRef = useRef(false);
 
@@ -215,11 +216,20 @@ export function PDFMapper({ campos = [], plantilla, formularioId, mapeoInicial =
   async function _cargarPdf(pdfjsLib, setDoc) {
     const proxyUrl = `${import.meta.env.VITE_API_URL}/formularios/${formularioId}/plantilla/proxy`;
     const token = localStorage.getItem('token');
+    setIsAuthError(false);
     try {
       const response = await fetch(proxyUrl, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!response.ok) throw new Error(`Error ${response.status} al descargar PDF`);
+      if (!response.ok) {
+        let msg = `Error ${response.status} al descargar PDF`;
+        try {
+          const body = await response.json();
+          if (body?.message) msg = body.message;
+        } catch { /* ignorar si no es JSON */ }
+        if (response.status === 401) setIsAuthError(true);
+        throw new Error(msg);
+      }
       const arrayBuffer = await response.arrayBuffer();
       const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       setDoc(doc);
@@ -398,20 +408,30 @@ export function PDFMapper({ campos = [], plantilla, formularioId, mapeoInicial =
                 <AlertCircle size={16} />
                 {loadError}
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoadError(null);
-                  setLoading(true);
-                  import('pdfjs-dist').then((pdfjsLib) => {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
-                    return _cargarPdf(pdfjsLib, setPdfDoc);
-                  }).catch((err) => { setLoadError(err?.message || 'Error al inicializar'); setLoading(false); });
-                }}
-                className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 underline"
-              >
-                <RefreshCw size={12} /> Reintentar
-              </button>
+              {isAuthError ? (
+                <button
+                  type="button"
+                  onClick={() => { window.location.href = '/login'; }}
+                  className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 underline"
+                >
+                  Iniciar sesión nuevamente
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoadError(null);
+                    setLoading(true);
+                    import('pdfjs-dist').then((pdfjsLib) => {
+                      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+                      return _cargarPdf(pdfjsLib, setPdfDoc);
+                    }).catch((err) => { setLoadError(err?.message || 'Error al inicializar'); setLoading(false); });
+                  }}
+                  className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 underline"
+                >
+                  <RefreshCw size={12} /> Reintentar
+                </button>
+              )}
             </div>
           )}
 
