@@ -1,5 +1,6 @@
 const { PDFDocument } = require('pdf-lib');
 const cloudinary = require('../config/cloudinary');
+const { descargarBuffer: cloudinaryDescargar } = require('../config/cloudinary');
 const multerUpload = require('../config/multer');
 const {
   Formulario, FormularioCampo, FormularioSeccion,
@@ -252,7 +253,7 @@ async function subirPlantilla(req, res, next) {
     let tieneAcroform = false;
     let camposPDF = [];
     try {
-      const fileBuffer = await _descargarBuffer(req.file.path || urlArchivo);
+      const fileBuffer = await _descargarBuffer(req.file.path || urlArchivo, req.file.public_id);
       const pdfDoc = await PDFDocument.load(fileBuffer).catch(() => null);
       if (pdfDoc) {
         try {
@@ -275,13 +276,8 @@ async function subirPlantilla(req, res, next) {
   } catch (err) { next(err); }
 }
 
-async function _descargarBuffer(url) {
-  if (url.startsWith('http')) {
-    const axios = require('axios');
-    const r = await axios.get(url, { responseType: 'arraybuffer' });
-    return Buffer.from(r.data);
-  }
-  return require('fs').promises.readFile(url);
+async function _descargarBuffer(urlOrPath, publicId) {
+  return cloudinaryDescargar(publicId || null, urlOrPath);
 }
 
 async function proxyPlantillaPdf(req, res, next) {
@@ -292,7 +288,7 @@ async function proxyPlantillaPdf(req, res, next) {
     });
     if (!plantilla) return res.status(404).json({ success: false, message: 'Sin plantilla activa' });
 
-    const buffer = await _descargarBuffer(plantilla.urlCloudinary);
+    const buffer = await _descargarBuffer(plantilla.urlCloudinary, plantilla.publicId);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${plantilla.nombre || 'plantilla.pdf'}"`);
     res.setHeader('Content-Length', buffer.length);

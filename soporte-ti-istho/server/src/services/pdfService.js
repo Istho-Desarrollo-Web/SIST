@@ -1,5 +1,6 @@
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const axios = require('axios');
+const { descargarBuffer: cloudinaryDescargar } = require('../config/cloudinary');
 
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -35,8 +36,8 @@ function aplicarFormatoFecha(valor, formatoFecha) {
 }
 
 async function llenarPDF(plantilla, mapeos, respuestaCampos, campos = []) {
-  const resp = await axios.get(plantilla.urlCloudinary, { responseType: 'arraybuffer' });
-  const pdfDoc = await PDFDocument.load(resp.data);
+  const pdfBytes = await cloudinaryDescargar(plantilla.publicId, plantilla.urlCloudinary);
+  const pdfDoc = await PDFDocument.load(pdfBytes);
 
   const campoMap = {};
   for (const rc of respuestaCampos) campoMap[rc.campoId] = rc;
