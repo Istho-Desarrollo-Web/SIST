@@ -212,22 +212,24 @@ export function PDFMapper({ campos = [], plantilla, formularioId, mapeoInicial =
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapeoInicial]);
 
-  function _cargarPdf(pdfjsLib, setDoc) {
+  async function _cargarPdf(pdfjsLib, setDoc) {
     const proxyUrl = `${import.meta.env.VITE_API_URL}/formularios/${formularioId}/plantilla/proxy`;
     const token = localStorage.getItem('token');
-    pdfjsLib.getDocument({
-      url: proxyUrl,
-      httpHeaders: token ? { Authorization: `Bearer ${token}` } : {},
-      withCredentials: false,
-    }).promise.then((doc) => {
+    try {
+      const response = await fetch(proxyUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) throw new Error(`Error ${response.status} al descargar PDF`);
+      const arrayBuffer = await response.arrayBuffer();
+      const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       setDoc(doc);
       setTotalPages(doc.numPages);
       setLoading(false);
-    }).catch((err) => {
+    } catch (err) {
       console.error('[PDFMapper] Error cargando PDF:', err);
       setLoadError(err?.message || 'No se pudo cargar el PDF');
       setLoading(false);
-    });
+    }
   }
 
   useEffect(() => {
@@ -403,7 +405,7 @@ export function PDFMapper({ campos = [], plantilla, formularioId, mapeoInicial =
                   setLoading(true);
                   import('pdfjs-dist').then((pdfjsLib) => {
                     pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
-                    _cargarPdf(pdfjsLib, setPdfDoc);
+                    return _cargarPdf(pdfjsLib, setPdfDoc);
                   }).catch((err) => { setLoadError(err?.message || 'Error al inicializar'); setLoading(false); });
                 }}
                 className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 underline"
