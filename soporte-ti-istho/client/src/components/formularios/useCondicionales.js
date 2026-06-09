@@ -35,16 +35,6 @@ function evaluar(condicion, valores) {
 }
 
 export function useCondicionales(campos, secciones, valores) {
-  const camposVisibles = useMemo(() => {
-    const set = new Set();
-    for (const campo of campos) {
-      if (!campo.condiciones || evaluar(campo.condiciones, valores)) {
-        set.add(campo.id);
-      }
-    }
-    return set;
-  }, [campos, valores]);
-
   const seccionesVisibles = useMemo(() => {
     const set = new Set();
     for (const sec of secciones) {
@@ -54,6 +44,17 @@ export function useCondicionales(campos, secciones, valores) {
     }
     return set;
   }, [secciones, valores]);
+
+  const camposVisibles = useMemo(() => {
+    const set = new Set();
+    for (const campo of campos) {
+      // Si el campo pertenece a una sección, la sección debe ser visible
+      if (campo.seccionId != null && !seccionesVisibles.has(campo.seccionId)) continue;
+      // El campo debe cumplir sus propias condiciones
+      if (!campo.condiciones || evaluar(campo.condiciones, valores)) set.add(campo.id);
+    }
+    return set;
+  }, [campos, seccionesVisibles, valores]);
 
   return { camposVisibles, seccionesVisibles };
 }
