@@ -93,6 +93,22 @@ async function responder(req, res, next) {
           message: `El campo "${campo.etiqueta}" es requerido`,
         });
       }
+      if (campo.tipo === 'grilla' && !estaVacio && campo.requerido) {
+        const opciones = campo.opciones && typeof campo.opciones === 'object' ? campo.opciones : {};
+        const filas = Array.isArray(opciones.filas) ? opciones.filas : [];
+        if (filas.length > 0) {
+          const incompleto = filas.some((_, idx) => {
+            const entry = valor.find(e => e.fila === idx);
+            return !entry || !entry.columna;
+          });
+          if (incompleto) {
+            return res.status(400).json({
+              success: false,
+              message: `El campo "${campo.etiqueta}" requiere selección en todas las filas`,
+            });
+          }
+        }
+      }
     }
 
     const respuestaCamposData = [];
