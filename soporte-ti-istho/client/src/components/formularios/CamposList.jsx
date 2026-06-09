@@ -103,6 +103,16 @@ function CampoOverlay({ campo }) {
   );
 }
 
+function SeccionOverlay({ seccion }) {
+  if (!seccion) return null;
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-navy-700 shadow-2xl border-2 border-orange-400 opacity-90">
+      <GripVertical className="w-4 h-4 text-white/60" />
+      <span className="text-sm font-semibold text-white truncate">{seccion.nombre}</span>
+    </div>
+  );
+}
+
 function UnsectionedBucket({ campos, onEditCampo, onDeleteCampo }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'droppable-unsectioned' });
   if (campos.length === 0) return null;
@@ -155,6 +165,14 @@ export function CamposList({ campos = [], onChange, secciones = [], onChangeSecc
   function handleDragEnd({ active, over }) {
     setActiveId(null);
     if (!over || active.id === over.id) return;
+
+    // Seccion arrastandose sobre otra seccion
+    if (String(active.id).startsWith('sec-') && String(over.id).startsWith('sec-')) {
+      const oldIdx = secciones.findIndex(s => s._key === active.id);
+      const newIdx = secciones.findIndex(s => s._key === over.id);
+      if (oldIdx !== -1 && newIdx !== -1) onChangeSecciones(arrayMove(secciones, oldIdx, newIdx));
+      return;
+    }
 
     const fromCampo = campos.find(c => c._key === active.id);
     if (!fromCampo) return;
@@ -242,6 +260,12 @@ export function CamposList({ campos = [], onChange, secciones = [], onChangeSecc
     ));
   }
 
+  function handleMoverSeccion(key, delta) {
+    const idx = secciones.findIndex(s => s._key === key);
+    if (idx < 0) return;
+    onChangeSecciones(arrayMove(secciones, idx, idx + delta));
+  }
+
   const editandoCampo = editandoKey !== null ? campos.find(c => c._key === editandoKey) : null;
 
   return (
@@ -275,27 +299,31 @@ export function CamposList({ campos = [], onChange, secciones = [], onChangeSecc
         onDragEnd={handleDragEnd}
       >
         {/* Secciones */}
-        {secciones.map(seccion => (
-          <SeccionItem
-            key={seccion._key}
-            seccion={seccion}
-            campos={camposBySec[seccion._key] || []}
-            onRenombrar={handleRenombrarSeccion}
-            onToggleVisible={handleToggleVisible}
-            onEliminar={handleEliminarSeccion}
-            onActualizarCondiciones={handleActualizarCondicionesSeccion}
-            camposDelFormulario={campos.filter(c => c.id)}
-          >
-            {(camposBySec[seccion._key] || []).map(campo => (
-              <SortableCampo
-                key={campo._key}
-                campo={campo}
-                onEdit={handleEditCampo}
-                onDelete={handleDeleteCampo}
-              />
-            ))}
-          </SeccionItem>
-        ))}
+        <SortableContext items={secciones.map(s => s._key)} strategy={verticalListSortingStrategy}>
+          {secciones.map((seccion, idx) => (
+            <SeccionItem
+              key={seccion._key}
+              seccion={seccion}
+              campos={camposBySec[seccion._key] || []}
+              onRenombrar={handleRenombrarSeccion}
+              onToggleVisible={handleToggleVisible}
+              onEliminar={handleEliminarSeccion}
+              onActualizarCondiciones={handleActualizarCondicionesSeccion}
+              camposDelFormulario={campos.filter(c => c.id)}
+              onMoverArriba={idx > 0 ? () => handleMoverSeccion(seccion._key, -1) : null}
+              onMoverAbajo={idx < secciones.length - 1 ? () => handleMoverSeccion(seccion._key, 1) : null}
+            >
+              {(camposBySec[seccion._key] || []).map(campo => (
+                <SortableCampo
+                  key={campo._key}
+                  campo={campo}
+                  onEdit={handleEditCampo}
+                  onDelete={handleDeleteCampo}
+                />
+              ))}
+            </SeccionItem>
+          ))}
+        </SortableContext>
 
         {/* Sin sección */}
         <UnsectionedBucket
@@ -312,7 +340,9 @@ export function CamposList({ campos = [], onChange, secciones = [], onChangeSecc
         )}
 
         <DragOverlay dropAnimation={null}>
-          <CampoOverlay campo={activeCampo} />
+          {activeId?.startsWith('sec-')
+            ? <SeccionOverlay seccion={secciones.find(s => s._key === activeId)} />
+            : <CampoOverlay campo={activeCampo} />}
         </DragOverlay>
       </DndContext>
 
