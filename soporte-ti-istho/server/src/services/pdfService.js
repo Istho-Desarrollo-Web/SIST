@@ -43,7 +43,7 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos, campos = []) {
 
   const campoOpcionesMap = {};
   for (const campo of campos) {
-    campoOpcionesMap[campo.id] = campo.opciones;
+    campoOpcionesMap[campo.id] = { opciones: campo.opciones, tipo: campo.tipo };
   }
 
   console.log(`[pdfService] mapeos=${mapeos.length}, respuestaCampos=${respuestaCampos.length}`);
@@ -121,12 +121,10 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos, campos = []) {
 
       // Detectar si el valor es una grilla
       let grillaData = null;
-      if (rc.valor) {
+      if (campoOpcionesMap[mapeo.campoId]?.tipo === 'grilla' && rc.valor) {
         try {
           const parsed = JSON.parse(rc.valor);
-          if (Array.isArray(parsed) && parsed.length > 0 && 'columna' in parsed[0]) {
-            grillaData = parsed;
-          }
+          if (Array.isArray(parsed)) grillaData = parsed;
         } catch { /* no es JSON */ }
       }
 
@@ -146,27 +144,37 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos, campos = []) {
           console.warn(`[pdfService] imagen fallo campoId=${mapeo.campoId}:`, imgErr.message);
         }
       } else if (grillaData) {
-        const opts = campoOpcionesMap[mapeo.campoId] || {};
+        const rawOpts = campoOpcionesMap[mapeo.campoId]?.opciones;
+        const opts = rawOpts && typeof rawOpts === 'object' ? rawOpts : (typeof rawOpts === 'string' ? (() => { try { return JSON.parse(rawOpts); } catch { return {}; } })() : {});
         const filasLabels = Array.isArray(opts.filas) ? opts.filas : [];
         const conObs = Boolean(opts.conObservaciones);
         const fontSize = Number(mapeo.fontTamano) || 8;
-        const font = await getFont('Helvetica', false, false);
+        const familia = mapeo.fontFamilia || 'Helvetica';
+        const negrita = Boolean(mapeo.fontNegrita);
+        const cursiva = Boolean(mapeo.fontCursiva);
+        const font = await getFont(familia, negrita, cursiva);
         const color = hexToRgb(mapeo.fontColor || '#000000');
         const areaH = (chipAlto / 100) * height;
         const lineHeight = fontSize + 2;
         const maxLineas = Math.floor(areaH / lineHeight);
+        if (maxLineas <= 0) {
+          console.warn(`[pdfService] grilla campoId=${mapeo.campoId}: área demasiado pequeña para renderizar`);
+        }
         const yInicio = yCentro + areaH / 2 - fontSize;
 
         for (let i = 0; i < Math.min(grillaData.length, maxLineas); i++) {
           const entry = grillaData[i];
-          const filaLabel = filasLabels[entry.fila] || `Fila ${entry.fila + 1}`;
+          const filaIdx = Number.isInteger(entry.fila) ? entry.fila : -1;
+          const filaLabel = filasLabels[filaIdx] || `Fila ${filaIdx >= 0 ? filaIdx + 1 : '?'}`;
           const colText = entry.columna || '—';
           const obsText = conObs && entry.observacion ? ` (${entry.observacion})` : '';
           const texto = `${filaLabel}: ${colText}${obsText}`;
           const y = yInicio - i * lineHeight;
           try {
             page.drawText(texto, { x: xLeft, y, size: fontSize, font, color });
-          } catch { /* skip */ }
+          } catch (e) {
+            console.warn(`[pdfService] grilla drawText fallo campoId=${mapeo.campoId} fila=${i}:`, e.message);
+          }
         }
       } else if (rc.valor) {
         const fontSize = Number(mapeo.fontTamano) || 10;
