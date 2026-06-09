@@ -34,39 +34,28 @@ function ReglaRow({ regla, camposDisponibles, onChange, onDelete }) {
 
   return (
     <div className="flex flex-wrap items-start gap-1.5 p-2 rounded bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-navy-600">
-      <select
+      <Select
         value={String(regla.campoId || '')}
-        onChange={e => onChange({ ...regla, campoId: e.target.value, valor: '' })}
-        className="flex-1 min-w-[120px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orange-500/50"
-      >
-        <option value="">Campo disparador...</option>
-        {camposDisponibles.map(c => (
-          <option key={c.id} value={String(c.id)}>{c.etiqueta}</option>
-        ))}
-      </select>
+        onChange={v => onChange({ ...regla, campoId: v, valor: '' })}
+        options={[{ value: '', label: 'Campo...' }, ...camposDisponibles.map(c => ({ value: String(c.id), label: c.etiqueta }))]}
+        placeholder="Campo..."
+      />
 
-      <select
+      <Select
         value={regla.operador}
-        onChange={e => onChange({ ...regla, operador: e.target.value })}
-        className="flex-1 min-w-[120px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orange-500/50"
-      >
-        {OPERADORES.map(op => (
-          <option key={op.value} value={op.value}>{op.label}</option>
-        ))}
-      </select>
+        onChange={v => onChange({ ...regla, operador: v })}
+        options={OPERADORES.map(op => ({ value: op.value, label: op.label }))}
+        placeholder="Operador..."
+      />
 
       {mostrarValor && (
         opcionesValor.length > 0 ? (
-          <select
+          <Select
             value={regla.valor || ''}
-            onChange={e => onChange({ ...regla, valor: e.target.value })}
-            className="flex-1 min-w-[100px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orange-500/50"
-          >
-            <option value="">Valor...</option>
-            {opcionesValor.map(op => (
-              <option key={op} value={op}>{op}</option>
-            ))}
-          </select>
+            onChange={v => onChange({ ...regla, valor: v })}
+            options={[{ value: '', label: 'Valor...' }, ...opcionesValor.map(op => ({ value: op, label: op }))]}
+            placeholder="Valor..."
+          />
         ) : (
           <input
             type="text"
@@ -399,14 +388,12 @@ export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial, campos
                     <>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-slate-500 dark:text-slate-400">Mostrar si se cumplen</span>
-                        <select
+                        <Select
                           value={condiciones.operadorLogico}
-                          onChange={e => setCondiciones({ ...condiciones, operadorLogico: e.target.value })}
-                          className="text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-500/50"
-                        >
-                          <option value="Y">TODAS las reglas</option>
-                          <option value="O">ALGUNA regla</option>
-                        </select>
+                          onChange={v => setCondiciones({ ...condiciones, operadorLogico: v })}
+                          options={[{ value: 'Y', label: 'TODAS las reglas' }, { value: 'O', label: 'ALGUNA regla' }]}
+                          placeholder="Operador lógico..."
+                        />
                         <span className="text-xs text-slate-500 dark:text-slate-400">siguientes reglas:</span>
                       </div>
 

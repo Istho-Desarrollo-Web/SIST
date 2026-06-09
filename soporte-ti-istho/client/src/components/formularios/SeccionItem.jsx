@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { ChevronDown, ChevronRight, Pencil, Trash2, Eye, EyeOff, Check, X, GitBranch, Plus } from 'lucide-react';
+import { Select as SelectInput } from '../../common/Select';
 
 function toArray(raw) {
   if (Array.isArray(raw)) return raw;
@@ -28,31 +29,26 @@ function ReglaRowSeccion({ regla, camposDisponibles, onChange, onDelete }) {
   const mostrarValor = !['esta_vacio', 'no_esta_vacio'].includes(regla.operador);
   return (
     <div className="flex flex-wrap items-start gap-1 p-2 rounded bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-navy-700">
-      <select
+      <SelectInput
         value={String(regla.campoId || '')}
-        onChange={e => onChange({ ...regla, campoId: e.target.value, valor: '' })}
-        className="flex-1 min-w-[110px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none"
-      >
-        <option value="">Campo...</option>
-        {camposDisponibles.map(c => <option key={c.id} value={String(c.id)}>{c.etiqueta}</option>)}
-      </select>
-      <select
+        onChange={v => onChange({ ...regla, campoId: v, valor: '' })}
+        options={[{ value: '', label: 'Campo...' }, ...camposDisponibles.map(c => ({ value: String(c.id), label: c.etiqueta }))]}
+        placeholder="Campo..."
+      />
+      <SelectInput
         value={regla.operador}
-        onChange={e => onChange({ ...regla, operador: e.target.value })}
-        className="flex-1 min-w-[110px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none"
-      >
-        {OPERADORES_SEC.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
-      </select>
+        onChange={v => onChange({ ...regla, operador: v })}
+        options={OPERADORES_SEC.map(op => ({ value: op.value, label: op.label }))}
+        placeholder="Operador..."
+      />
       {mostrarValor && (
         opcionesValor.length > 0 ? (
-          <select
+          <SelectInput
             value={regla.valor || ''}
-            onChange={e => onChange({ ...regla, valor: e.target.value })}
-            className="flex-1 min-w-[80px] text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none"
-          >
-            <option value="">Valor...</option>
-            {opcionesValor.map(op => <option key={op} value={op}>{op}</option>)}
-          </select>
+            onChange={v => onChange({ ...regla, valor: v })}
+            options={[{ value: '', label: 'Valor...' }, ...opcionesValor.map(op => ({ value: op, label: op }))]}
+            placeholder="Valor..."
+          />
         ) : (
           <input
             type="text"
@@ -228,14 +224,12 @@ export function SeccionItem({
               <>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-slate-500">Mostrar si se cumplen</span>
-                  <select
+                  <SelectInput
                     value={condiciones.operadorLogico}
-                    onChange={e => setCondiciones({ ...condiciones, operadorLogico: e.target.value })}
-                    className="text-xs rounded border border-slate-300 dark:border-navy-500 bg-white dark:bg-navy-800 text-slate-800 dark:text-slate-100 px-2 py-1 focus:outline-none"
-                  >
-                    <option value="Y">TODAS las reglas</option>
-                    <option value="O">ALGUNA regla</option>
-                  </select>
+                    onChange={v => setCondiciones({ ...condiciones, operadorLogico: v })}
+                    options={[{ value: 'Y', label: 'TODAS las reglas' }, { value: 'O', label: 'ALGUNA regla' }]}
+                    placeholder="Operador lógico..."
+                  />
                   <span className="text-xs text-slate-500">siguientes reglas:</span>
                 </div>
                 <div className="flex flex-col gap-1.5">
