@@ -20,6 +20,7 @@ async function descargarBuffer(publicId, fallbackUrl) {
 
   if (isConfigured && publicId) {
     const signedUrl = cloudinary.utils.private_download_url(publicId, null, { resource_type: 'raw' });
+    console.log('[cloudinary] signedUrl:', signedUrl.replace(/signature=[^&]+/, 'signature=REDACTED').replace(/api_key=[^&]+/, 'api_key=REDACTED'));
     const r = await axios.get(signedUrl, { responseType: 'arraybuffer' });
     return Buffer.from(r.data);
   }

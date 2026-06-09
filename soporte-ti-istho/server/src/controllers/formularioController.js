@@ -288,6 +288,7 @@ async function proxyPlantillaPdf(req, res, next) {
     });
     if (!plantilla) return res.status(404).json({ success: false, message: 'Sin plantilla activa' });
 
+    console.log('[proxy] publicId:', plantilla.publicId, '| url:', plantilla.urlCloudinary);
     const buffer = await _descargarBuffer(plantilla.urlCloudinary, plantilla.publicId);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${plantilla.nombre || 'plantilla.pdf'}"`);
