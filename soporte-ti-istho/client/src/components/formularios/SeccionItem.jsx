@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { ChevronDown, ChevronRight, Pencil, Trash2, Eye, EyeOff, Check, X, GitBranch, Plus } from 'lucide-react';
-import { Select as SelectInput } from '../../common/Select';
+import { Select as SelectInput } from '../common/Select';
 
 function toArray(raw) {
   if (Array.isArray(raw)) return raw;
