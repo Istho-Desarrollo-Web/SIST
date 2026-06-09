@@ -178,7 +178,7 @@ function InspectorInput({ label, value, min, max, step, onChange }) {
   );
 }
 
-export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, camposPDF = [] }) {
+export function PDFMapper({ campos = [], plantilla, formularioId, mapeoInicial = [], onSave, camposPDF = [] }) {
   const canvasRef = useRef(null);
   const canvasWrapRef = useRef(null);
   const scrollRef = useRef(null);
@@ -212,31 +212,40 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapeoInicial]);
 
+  function _cargarPdf(pdfjsLib, setDoc) {
+    const proxyUrl = `${import.meta.env.VITE_API_URL}/formularios/${formularioId}/plantilla/proxy`;
+    const token = localStorage.getItem('token');
+    pdfjsLib.getDocument({
+      url: proxyUrl,
+      httpHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+      withCredentials: false,
+    }).promise.then((doc) => {
+      setDoc(doc);
+      setTotalPages(doc.numPages);
+      setLoading(false);
+    }).catch((err) => {
+      console.error('[PDFMapper] Error cargando PDF:', err);
+      setLoadError(err?.message || 'No se pudo cargar el PDF');
+      setLoading(false);
+    });
+  }
+
   useEffect(() => {
-    if (!plantilla?.urlCloudinary) return;
+    if (!plantilla?.urlCloudinary || !formularioId) return;
     setLoading(true);
     setLoadError(null);
     setPdfDoc(null);
     setPageNum(1);
     import('pdfjs-dist').then((pdfjsLib) => {
       pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
-      pdfjsLib.getDocument({ url: plantilla.urlCloudinary, withCredentials: false }).promise
-        .then((doc) => {
-          setPdfDoc(doc);
-          setTotalPages(doc.numPages);
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error('[PDFMapper] Error cargando PDF:', err);
-          setLoadError(err?.message || 'No se pudo cargar el PDF');
-          setLoading(false);
-        });
+      _cargarPdf(pdfjsLib, setPdfDoc);
     }).catch((err) => {
       console.error('[PDFMapper] Error importando pdfjs-dist:', err);
       setLoadError('Error al inicializar el visor PDF');
       setLoading(false);
     });
-  }, [plantilla]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plantilla, formularioId]);
 
   useEffect(() => {
     if (!pdfDoc || !canvasRef.current || !canvasWrapRef.current) return;
@@ -394,9 +403,7 @@ export function PDFMapper({ campos = [], plantilla, mapeoInicial = [], onSave, c
                   setLoading(true);
                   import('pdfjs-dist').then((pdfjsLib) => {
                     pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
-                    pdfjsLib.getDocument({ url: plantilla.urlCloudinary, withCredentials: false }).promise
-                      .then((doc) => { setPdfDoc(doc); setTotalPages(doc.numPages); setLoading(false); })
-                      .catch((err) => { setLoadError(err?.message || 'Error al cargar'); setLoading(false); });
+                    _cargarPdf(pdfjsLib, setPdfDoc);
                   }).catch((err) => { setLoadError(err?.message || 'Error al inicializar'); setLoading(false); });
                 }}
                 className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 underline"

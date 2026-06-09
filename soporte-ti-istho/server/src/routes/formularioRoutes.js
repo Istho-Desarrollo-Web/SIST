@@ -33,6 +33,9 @@ router.post('/:id/campos', auth, authorize(ROLES.ADMIN, ROLES.TECNICO), fc.guard
 router.post('/:id/plantilla', auth, authorize(ROLES.ADMIN, ROLES.TECNICO),
   multerUpload.single('archivo'), fc.subirPlantilla);
 
+// Proxy plantilla PDF (evita restricciones CDN de Cloudinary en el navegador)
+router.get('/:id/plantilla/proxy', auth, fc.proxyPlantillaPdf);
+
 // Mapeos
 router.post('/:id/mapeos', auth, authorize(ROLES.ADMIN, ROLES.TECNICO), fc.guardarMapeos);
 

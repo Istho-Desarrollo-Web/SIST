@@ -279,6 +279,7 @@ export function FormularioBuilderPage() {
           <PDFMapper
             campos={campos}
             plantilla={plantilla}
+            formularioId={id}
             mapeoInicial={mapeoInicial}
             camposPDF={camposPDF}
             onSave={handleGuardarMapeos}

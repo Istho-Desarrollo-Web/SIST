@@ -284,6 +284,22 @@ async function _descargarBuffer(url) {
   return require('fs').promises.readFile(url);
 }
 
+async function proxyPlantillaPdf(req, res, next) {
+  try {
+    const plantilla = await FormularioPdfPlantilla.findOne({
+      where: { formularioId: req.params.id },
+      order: [['created_at', 'DESC']],
+    });
+    if (!plantilla) return res.status(404).json({ success: false, message: 'Sin plantilla activa' });
+
+    const buffer = await _descargarBuffer(plantilla.urlCloudinary);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${plantilla.nombre || 'plantilla.pdf'}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
+  } catch (err) { next(err); }
+}
+
 async function guardarMapeos(req, res, next) {
   try {
     const plantilla = await FormularioPdfPlantilla.findOne({
@@ -316,4 +332,4 @@ async function guardarMapeos(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { listar, crear, obtener, obtenerPublico, obtenerVista, listarDisponibles, actualizar, eliminar, guardarCampos, subirPlantilla, guardarMapeos };
+module.exports = { listar, crear, obtener, obtenerPublico, obtenerVista, listarDisponibles, actualizar, eliminar, guardarCampos, subirPlantilla, guardarMapeos, proxyPlantillaPdf };
