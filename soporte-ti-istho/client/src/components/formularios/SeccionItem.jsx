@@ -3,6 +3,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { ChevronDown, ChevronRight, Pencil, Trash2, Eye, EyeOff, Check, X, GitBranch, Plus } from 'lucide-react';
 import { Select as SelectInput } from '../common/Select';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 
 function toArray(raw) {
   if (Array.isArray(raw)) return raw;
@@ -80,6 +81,7 @@ export function SeccionItem({
   const [editando, setEditando] = useState(false);
   const [nombreDraft, setNombreDraft] = useState(seccion.nombre);
   const [panelCondicionesVisible, setPanelCondicionesVisible] = useState(false);
+  const [confirmEliminar, setConfirmEliminar] = useState(false);
 
   const { setNodeRef, isOver } = useDroppable({ id: `droppable-${seccion._key}` });
 
@@ -186,16 +188,23 @@ export function SeccionItem({
         {/* Eliminar */}
         <button
           type="button"
-          onClick={() => {
-            if (window.confirm(`¿Eliminar la sección "${seccion.nombre}"? Los campos quedarán sin sección.`)) {
-              onEliminar(seccion._key);
-            }
-          }}
+          onClick={() => setConfirmEliminar(true)}
           className="text-white/60 hover:text-red-300 shrink-0"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmEliminar}
+        variant="danger"
+        title="Eliminar sección"
+        message={`¿Eliminar la sección "${seccion.nombre}"? Los campos quedarán sin sección.`}
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        onConfirm={() => { setConfirmEliminar(false); onEliminar(seccion._key); }}
+        onCancel={() => setConfirmEliminar(false)}
+      />
 
       {/* Panel condiciones */}
       {panelCondicionesVisible && (() => {
