@@ -174,6 +174,15 @@ export function CamposList({ campos = [], onChange, secciones = [], onChangeSecc
       return;
     }
 
+    // Campo soltado sobre el encabezado sortable de una sección
+    if (String(over.id).startsWith('sec-')) {
+      const fromCampoHeader = campos.find(c => c._key === active.id);
+      if (fromCampoHeader && fromCampoHeader._seccionKey !== String(over.id)) {
+        onChange(campos.map(c => c._key === active.id ? { ...c, _seccionKey: String(over.id) } : c));
+      }
+      return;
+    }
+
     const fromCampo = campos.find(c => c._key === active.id);
     if (!fromCampo) return;
 
