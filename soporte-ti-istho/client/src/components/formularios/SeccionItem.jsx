@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { ChevronDown, ChevronRight, Pencil, Trash2, Eye, EyeOff, Check, X, GitBranch, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, GripVertical, Pencil, Trash2, Eye, EyeOff, Check, X, GitBranch, Plus } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Select as SelectInput } from '../common/Select';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 
@@ -75,6 +77,8 @@ export function SeccionItem({
   onEliminar,
   onActualizarCondiciones,
   camposDelFormulario = [],
+  onMoverArriba = null,
+  onMoverAbajo = null,
   children,
 }) {
   const [expandida, setExpandida] = useState(true);
@@ -82,6 +86,21 @@ export function SeccionItem({
   const [nombreDraft, setNombreDraft] = useState(seccion.nombre);
   const [panelCondicionesVisible, setPanelCondicionesVisible] = useState(false);
   const [confirmEliminar, setConfirmEliminar] = useState(false);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortableRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: seccion._key });
+
+  const sortableStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0 : 1,
+  };
 
   const { setNodeRef, isOver } = useDroppable({ id: `droppable-${seccion._key}` });
 
@@ -108,9 +127,23 @@ export function SeccionItem({
     : 'bg-slate-500 border-slate-400';
 
   return (
-    <div className={`rounded-lg border-2 overflow-hidden ${seccion.visibleParaUsuario ? 'border-navy-700' : 'border-slate-400'}`}>
+    <div
+      ref={setSortableRef}
+      style={sortableStyle}
+      className={`rounded-lg border-2 overflow-hidden ${seccion.visibleParaUsuario ? 'border-navy-700' : 'border-slate-400'}`}
+    >
       {/* Encabezado */}
       <div className={`${headerBg} flex items-center gap-2 px-3 py-2`}>
+        {/* Handle de arrastre */}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="text-white/40 hover:text-white/80 cursor-grab active:cursor-grabbing shrink-0 touch-none"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+
         {/* Colapsar */}
         <button
           type="button"
@@ -183,6 +216,28 @@ export function SeccionItem({
           className={`shrink-0 ${seccion.condiciones ? 'text-amber-300 hover:text-amber-200' : 'text-white/60 hover:text-white'}`}
         >
           <GitBranch className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Mover arriba */}
+        <button
+          type="button"
+          title="Mover seccion arriba"
+          onClick={onMoverArriba ?? undefined}
+          disabled={!onMoverArriba}
+          className="text-white/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+        >
+          <ChevronUp className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Mover abajo */}
+        <button
+          type="button"
+          title="Mover seccion abajo"
+          onClick={onMoverAbajo ?? undefined}
+          disabled={!onMoverAbajo}
+          className="text-white/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+        >
+          <ChevronDown className="w-3.5 h-3.5" />
         </button>
 
         {/* Eliminar */}
