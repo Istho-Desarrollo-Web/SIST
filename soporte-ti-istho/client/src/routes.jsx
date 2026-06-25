@@ -34,7 +34,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/solicitud" element={<SolicitudPublicaPage />} />
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
 
       <Route path="/dashboard" element={
         <ProtectedRoute roles={['admin', 'tecnico']}>

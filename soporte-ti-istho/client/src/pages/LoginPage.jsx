@@ -28,7 +28,7 @@ export function LoginPage() {
     try {
       const user = await login(email, password);
       toast.success(`Bienvenido, ${user.nombre}`);
-      navigate(user.rol === 'usuario' ? '/solicitudes' : '/dashboard');
+      navigate('/');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error al iniciar sesión');
     }

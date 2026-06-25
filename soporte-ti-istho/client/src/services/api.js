@@ -14,11 +14,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    const PUBLIC_URLS = ['/auth/login', '/empleados/buscar', '/solicitudes/publica'];
+    const PUBLIC_URLS = ['/auth/login', '/auth/me', '/empleados/buscar', '/solicitudes/publica'];
     const isPublic = PUBLIC_URLS.some(u => err.config.url.includes(u));
     if (err.response?.status === 401 && !isPublic) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      window.location.href = '/';
     }
     return Promise.reject(err);
   }

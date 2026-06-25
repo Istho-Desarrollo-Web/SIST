@@ -7,16 +7,13 @@ const fr = require('../controllers/formularioRespuestaController');
 const { ROLES } = require('../utils/constants');
 
 // Rutas estáticas primero
-router.get('/disponibles', (req, res, next) => {
-  // intenta auth pero no requiere
-  auth(req, res, () => next());
-}, fc.listarDisponibles);
+router.get('/disponibles', auth.optional, fc.listarDisponibles);
 
 router.get('/pdfs', auth, fr.listarPdfs);
 router.delete('/pdfs/:id', auth, authorize(ROLES.ADMIN), fr.eliminarPdf);
 
 // Vista pública/autenticada para rellenar (opcional auth)
-router.get('/:id/vista', (req, res, next) => { auth(req, res, () => next()); }, fc.obtenerVista);
+router.get('/:id/vista', auth.optional, fc.obtenerVista);
 
 // CRUD formularios
 router.get('/', auth, authorize(ROLES.ADMIN, ROLES.TECNICO), fc.listar);
