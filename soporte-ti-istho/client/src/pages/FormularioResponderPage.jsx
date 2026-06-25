@@ -78,9 +78,9 @@ export function FormularioResponderPage() {
         }
       }
       const res = await formulariosApi.responder(id, { campos: valoresFiltrados });
-      const { pdfGenerado } = res.data.data;
+      const { respuesta, pdfGenerado } = res.data.data;
       setValores({});
-      setSuccessData({ pdfUrl: pdfGenerado?.urlCloudinary, formularioNombre: formulario?.nombre });
+      setSuccessData({ respuestaId: pdfGenerado ? respuesta?.id : null, formularioNombre: formulario?.nombre });
     } catch {
       toast.error('Error al enviar el formulario');
     } finally {
@@ -133,7 +133,7 @@ export function FormularioResponderPage() {
       <PDFSuccessModal
         isOpen={Boolean(successData)}
         onClose={() => setSuccessData(null)}
-        pdfUrl={successData?.pdfUrl}
+        respuestaId={successData?.respuestaId}
         formularioNombre={successData?.formularioNombre}
       />
     </div>

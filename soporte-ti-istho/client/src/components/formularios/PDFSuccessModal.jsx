@@ -1,10 +1,29 @@
+import { useState } from 'react';
 import { CheckCircle, Download, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
+import { formulariosApi } from '../../services/formulariosApi';
 
-export function PDFSuccessModal({ isOpen, onClose, pdfUrl, formularioNombre }) {
-  function descargar() {
-    if (pdfUrl) window.open(pdfUrl, '_blank');
+export function PDFSuccessModal({ isOpen, onClose, respuestaId, formularioNombre }) {
+  const [descargando, setDescargando] = useState(false);
+
+  async function descargar() {
+    if (!respuestaId) return;
+    setDescargando(true);
+    try {
+      const resp = await formulariosApi.descargarPdf(respuestaId);
+      const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(formularioNombre || 'formulario').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Error al descargar el PDF');
+    } finally {
+      setDescargando(false);
+    }
   }
 
   return (
@@ -23,7 +42,7 @@ export function PDFSuccessModal({ isOpen, onClose, pdfUrl, formularioNombre }) {
             </p>
           )}
         </div>
-        {pdfUrl ? (
+        {respuestaId ? (
           <p className="text-sm text-slate-600 dark:text-slate-300">
             Tu PDF fue generado y está listo para descargar.
           </p>
@@ -33,13 +52,13 @@ export function PDFSuccessModal({ isOpen, onClose, pdfUrl, formularioNombre }) {
           </p>
         )}
         <div className="flex gap-3 w-full">
-          {pdfUrl && (
-            <Button onClick={descargar} className="flex-1 gap-2">
+          {respuestaId && (
+            <Button onClick={descargar} disabled={descargando} className="flex-1 gap-2">
               <Download className="w-4 h-4" />
-              Descargar PDF
+              {descargando ? 'Descargando...' : 'Descargar PDF'}
             </Button>
           )}
-          <Button variant={pdfUrl ? 'outline' : 'primary'} onClick={onClose} className="flex-1">
+          <Button variant={respuestaId ? 'outline' : 'primary'} onClick={onClose} className="flex-1">
             Cerrar
           </Button>
         </div>

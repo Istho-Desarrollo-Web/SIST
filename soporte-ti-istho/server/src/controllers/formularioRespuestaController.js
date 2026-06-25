@@ -284,7 +284,12 @@ async function descargarPdf(req, res, next) {
     if (req.user.rol === ROLES.USUARIO && respuesta.respondidoPor !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Sin permiso' });
     }
-    res.redirect(respuesta.pdf.urlCloudinary);
+    const { descargarBuffer } = require('../config/cloudinary');
+    const buffer = await descargarBuffer(respuesta.pdf.publicId || null, respuesta.pdf.urlCloudinary);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="formulario-${req.params.id}.pdf"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
   } catch (err) { next(err); }
 }
 

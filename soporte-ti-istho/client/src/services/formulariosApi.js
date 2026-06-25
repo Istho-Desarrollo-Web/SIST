@@ -23,7 +23,7 @@ export const formulariosApi = {
   responder: (id, data) => api.post(`/formularios/${id}/responder`, data),
   listarPdfs: () => api.get('/formularios/pdfs'),
   eliminarPdf: (pdfId) => api.delete(`/formularios/pdfs/${pdfId}`),
-  descargarPdf: (respuestaId) => api.get(`/formularios/respuestas/${respuestaId}/pdf`, { maxRedirects: 0 }),
+  descargarPdf: (respuestaId) => api.get(`/formularios/respuestas/${respuestaId}/pdf`, { responseType: 'blob' }),
   asociarSolicitud: (respuestaId, solicitudId) =>
     api.put(`/formularios/respuestas/${respuestaId}/solicitud`, { solicitudId }),
 };

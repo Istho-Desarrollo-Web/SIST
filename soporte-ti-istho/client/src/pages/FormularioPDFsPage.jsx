@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Download, Filter, Trash2 } from 'lucide-react';
+import { Download, Filter, Trash2, Loader2 } from 'lucide-react';
 import { Select } from '../components/common/Select';
 import { Skeleton } from '../components/common/Skeleton';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
@@ -18,6 +18,7 @@ export function FormularioPDFsPage() {
   const [pdfs, setPdfs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [eliminando, setEliminando] = useState(null);
+  const [descargando, setDescargando] = useState(null);
   const [confirmRow, setConfirmRow] = useState(null);
   const [filtroFormulario, setFiltroFormulario] = useState('');
   const [filtroFechaDesde, setFiltroFechaDesde] = useState('');
@@ -43,6 +44,23 @@ export function FormularioPDFsPage() {
     if (filtroFechaHasta && fecha > new Date(filtroFechaHasta + 'T23:59:59')) return false;
     return true;
   });
+
+  async function descargar(row) {
+    setDescargando(row.id);
+    try {
+      const resp = await formulariosApi.descargarPdf(row.id);
+      const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(row.formulario?.nombre || 'formulario').replace(/[^a-zA-Z0-9]/g, '_')}_${row.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Error al descargar el PDF');
+    } finally {
+      setDescargando(null);
+    }
+  }
 
   async function confirmarEliminar() {
     if (!confirmRow) return;
@@ -135,16 +153,17 @@ export function FormularioPDFsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
-                      {r.pdf?.urlCloudinary && (
-                        <a
-                          href={r.pdf.urlCloudinary}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-navy-50 dark:bg-navy-700 text-navy-600 dark:text-slate-300 hover:bg-navy-100 dark:hover:bg-navy-600 transition-colors"
+                      {r.pdf && (
+                        <button
+                          onClick={() => descargar(r)}
+                          disabled={descargando === r.id}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-navy-50 dark:bg-navy-700 text-navy-600 dark:text-slate-300 hover:bg-navy-100 dark:hover:bg-navy-600 transition-colors disabled:opacity-50"
                         >
-                          <Download className="w-3.5 h-3.5" />
-                          Descargar
-                        </a>
+                          {descargando === r.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Download className="w-3.5 h-3.5" />}
+                          {descargando === r.id ? 'Descargando...' : 'Descargar'}
+                        </button>
                       )}
                       {isAdmin && r.pdf?.id && (
                         <button
