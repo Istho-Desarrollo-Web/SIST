@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Ticket, Users, UserCog, LogOut, Menu, X, ChevronDown, BarChart2, Bell, PlusCircle, RefreshCw, Check, FileText } from 'lucide-react';
+import { LayoutDashboard, Ticket, Users, UserCog, LogOut, Menu, X, ChevronDown, BarChart2, Bell, PlusCircle, RefreshCw, Check, FileText, LogIn } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
 import { LogoSIST } from '../common/LogoSIST';
@@ -56,7 +56,7 @@ export function Navbar() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   return (
@@ -197,50 +197,62 @@ export function Navbar() {
               </div>
             )}
 
-            {/* User menu */}
-            <div className="relative">
-              <button
-                onClick={() => setUserMenu(v => !v)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors"
-              >
-                <div className="w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">{user?.nombre?.[0]?.toUpperCase()}</span>
-                </div>
-                <span className="hidden sm:block text-sm text-white font-medium max-w-28 truncate">{user?.nombre}</span>
-                <ChevronDown size={14} className="text-navy-200" />
-              </button>
-
-              {userMenu && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setUserMenu(false)} />
-                  <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-navy-700 rounded-xl shadow-lg border border-slate-200 dark:border-navy-600 z-20 py-1 animate-[fadeIn_0.15s_ease]">
-                    <NavLink
-                      to="/perfil"
-                      onClick={() => setUserMenu(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-600"
-                    >
-                      Mi Perfil
-                    </NavLink>
-                    <hr className="my-1 border-slate-200 dark:border-navy-600" />
-                    <button
-                      onClick={handleLogout}
-                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
-                      <LogOut size={14} />
-                      Cerrar sesión
-                    </button>
+            {/* User menu (solo autenticado) */}
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenu(v => !v)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  <div className="w-7 h-7 bg-orange-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">{user.nombre?.[0]?.toUpperCase()}</span>
                   </div>
-                </>
-              )}
-            </div>
+                  <span className="hidden sm:block text-sm text-white font-medium max-w-28 truncate">{user.nombre}</span>
+                  <ChevronDown size={14} className="text-navy-200" />
+                </button>
 
-            {/* Mobile hamburger */}
-            <button
-              onClick={() => setOpen(v => !v)}
-              className="md:hidden p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
-            >
-              {open ? <X size={20} /> : <Menu size={20} />}
-            </button>
+                {userMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setUserMenu(false)} />
+                    <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-navy-700 rounded-xl shadow-lg border border-slate-200 dark:border-navy-600 z-20 py-1 animate-[fadeIn_0.15s_ease]">
+                      <NavLink
+                        to="/perfil"
+                        onClick={() => setUserMenu(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-600"
+                      >
+                        Mi Perfil
+                      </NavLink>
+                      <hr className="my-1 border-slate-200 dark:border-navy-600" />
+                      <button
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      >
+                        <LogOut size={14} />
+                        Cerrar sesión
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <NavLink
+                to="/login"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors"
+              >
+                <LogIn size={15} />
+                <span className="hidden sm:block">Iniciar sesión</span>
+              </NavLink>
+            )}
+
+            {/* Mobile hamburger (solo autenticado con items visibles) */}
+            {user && visibleItems.length > 0 && (
+              <button
+                onClick={() => setOpen(v => !v)}
+                className="md:hidden p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
+              >
+                {open ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            )}
           </div>
         </div>
 

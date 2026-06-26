@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
 
 const DAYS_HEADER = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'];
@@ -21,10 +21,11 @@ function toDisplay(date) {
   return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 }
 
-export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label }) {
+export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label, className = '' }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState('day');
   const [display, setDisplay] = useState(() => parseValue(value) || new Date());
+  const [popupAlign, setPopupAlign] = useState('left');
   const ref = useRef(null);
 
   useEffect(() => {
@@ -42,6 +43,13 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label 
     document.addEventListener('mousedown', onOutside);
     return () => document.removeEventListener('mousedown', onOutside);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const spaceRight = window.innerWidth - rect.left;
+    setPopupAlign(spaceRight < 296 ? 'right' : 'left');
+  }, [open]);
 
   const selected = parseValue(value);
   const today = new Date();
@@ -83,7 +91,7 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label 
   const fieldCls = 'w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 focus:outline-none focus:ring-2 focus:ring-orange-500/50';
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className={`relative ${className}`}>
       {label && (
         <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">
           {label}
@@ -111,7 +119,9 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label 
       </div>
 
       {open && (
-        <div className="absolute top-full mt-1 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-navy-800 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 overflow-hidden">
+        <div
+          className={`absolute top-full mt-1 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-navy-800 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 overflow-hidden ${popupAlign === 'right' ? 'right-0' : 'left-0'}`}
+        >
           {/* Navigation header */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-navy-700">
             <button

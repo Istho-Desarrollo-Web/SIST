@@ -37,9 +37,7 @@ router.get('/:id/plantilla/proxy', auth, fc.proxyPlantillaPdf);
 router.post('/:id/mapeos', auth, authorize(ROLES.ADMIN, ROLES.TECNICO), fc.guardarMapeos);
 
 // Responder formulario (puede ser sin auth si es público — el controller valida)
-router.post('/:id/responder', (req, res, next) => {
-  auth(req, res, () => next());
-}, fr.responder);
+router.post('/:id/responder', auth.optional, fr.responder);
 
 // PDF de respuesta
 router.get('/respuestas/:id/pdf', auth, fr.descargarPdf);
