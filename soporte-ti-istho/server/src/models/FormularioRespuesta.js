@@ -22,6 +22,11 @@ FormularioRespuesta.init({
     type: DataTypes.STRING(45),
     field: 'ip_respondente',
   },
+  nombreRespondente: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+    field: 'nombre_respondente',
+  },
   estado: {
     type: DataTypes.ENUM('pendiente', 'completado'),
     allowNull: false,
