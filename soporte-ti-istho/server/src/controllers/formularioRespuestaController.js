@@ -447,6 +447,11 @@ async function exportarRespuestas(req, res, next) {
     const NAV_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B2340' } };
     const HEADER_FONT = { bold: true, color: { argb: 'FFFFFFFF' } };
 
+    const safeCell = (v) => {
+      if (typeof v !== 'string') return v;
+      return /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+    };
+
     const resolverNombre = (r) => r.respondedor?.nombre || r.nombreRespondente || 'Anónimo';
 
     const formatDate = (d) => {
@@ -468,7 +473,7 @@ async function exportarRespuestas(req, res, next) {
       for (const r of respuestas) {
         const rowData = {
           id: r.id,
-          respondidoPor: resolverNombre(r),
+          respondidoPor: safeCell(resolverNombre(r)),
           fecha: formatDate(r.createdAt),
           estado: r.estado === 'completado' ? 'Completado' : 'Pendiente',
           pdf: r.pdf?.urlCloudinary ? { text: 'Descargar', hyperlink: r.pdf.urlCloudinary } : '',
@@ -504,7 +509,7 @@ async function exportarRespuestas(req, res, next) {
       for (const r of respuestas) {
         const rowData = {
           id: r.id,
-          respondidoPor: resolverNombre(r),
+          respondidoPor: safeCell(resolverNombre(r)),
           fecha: formatDate(r.createdAt),
           estado: r.estado === 'completado' ? 'Completado' : 'Pendiente',
         };
@@ -515,9 +520,9 @@ async function exportarRespuestas(req, res, next) {
           if (campoObj.tipo === 'firma' && rc.archivoUrl) {
             rowData[`campo_${rc.campoId}`] = { text: 'Ver firma', hyperlink: rc.archivoUrl };
           } else if (campoObj.tipo === 'grilla') {
-            rowData[`campo_${rc.campoId}`] = rc.valor || '';
+            rowData[`campo_${rc.campoId}`] = safeCell(rc.valor || '');
           } else {
-            rowData[`campo_${rc.campoId}`] = rc.valor || '';
+            rowData[`campo_${rc.campoId}`] = safeCell(rc.valor || '');
           }
         }
         rowData.pdf = r.pdf?.urlCloudinary ? { text: 'Descargar', hyperlink: r.pdf.urlCloudinary } : '';

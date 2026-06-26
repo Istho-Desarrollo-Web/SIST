@@ -219,7 +219,7 @@ export function FormularioPDFsPage() {
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-navy-600">
                 {filtered.map((r) => (
-                  <tr key={r.id} className="bg-white dark:bg-navy-800 hover:bg-slate-50 dark:hover:bg-navy-750">
+                  <tr key={r.id} className="bg-white dark:bg-navy-800 hover:bg-slate-50 dark:hover:bg-navy-700">
                     <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">
                       {r.formulario?.nombre || '—'}
                     </td>
