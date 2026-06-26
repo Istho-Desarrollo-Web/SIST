@@ -194,7 +194,7 @@ export function FormularioRespuestasPage() {
                   <tr key={r.id} className="bg-white dark:bg-navy-800 hover:bg-slate-50 dark:hover:bg-navy-700">
                     <td className="px-4 py-3 text-slate-400 dark:text-slate-500">{r.id}</td>
                     <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{resolverNombre(r)}</td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{formatFecha(r.createdAt)}</td>
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{formatFecha(r.createdAt ?? r.created_at)}</td>
                     <td className="px-4 py-3">
                       <Badge variant={r.estado === 'completado' ? 'success' : 'warning'}>
                         {r.estado === 'completado' ? 'Completado' : 'Pendiente'}
