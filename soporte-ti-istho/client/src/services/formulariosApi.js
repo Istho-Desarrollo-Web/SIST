@@ -26,4 +26,17 @@ export const formulariosApi = {
   descargarPdf: (respuestaId) => api.get(`/formularios/respuestas/${respuestaId}/pdf`, { responseType: 'blob' }),
   asociarSolicitud: (respuestaId, solicitudId) =>
     api.put(`/formularios/respuestas/${respuestaId}/solicitud`, { solicitudId }),
+
+  // Módulo de respuestas
+  listarRespuestasFormulario: (id, params) =>
+    api.get(`/formularios/${id}/respuestas`, { params }),
+
+  exportarRespuestas: (id, formato) =>
+    api.get(`/formularios/${id}/respuestas/export`, {
+      params: { formato },
+      responseType: 'blob',
+    }),
+
+  obtenerDetalleRespuesta: (respuestaId) =>
+    api.get(`/formularios/respuestas/${respuestaId}/detalle`),
 };
