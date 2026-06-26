@@ -128,8 +128,12 @@ export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial, campos
         setConObservaciones(false);
       }
       if (campoInicial?.condiciones) {
-        setCondiciones(campoInicial.condiciones);
-        setPanelCondicionesVisible(true);
+        let cond = campoInicial.condiciones;
+        if (typeof cond === 'string') { try { cond = JSON.parse(cond); } catch { cond = null; } }
+        if (cond && Array.isArray(cond.reglas)) {
+          setCondiciones(cond);
+          setPanelCondicionesVisible(true);
+        }
       } else {
         setCondiciones(null);
         setPanelCondicionesVisible(false);
@@ -398,35 +402,35 @@ export function CampoEditorModal({ isOpen, onClose, onSave, campoInicial, campos
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        {condiciones.reglas.map((regla, idx) => (
+                        {(condiciones.reglas ?? []).map((regla, idx) => (
                           <ReglaRow
                             key={idx}
                             regla={regla}
                             camposDisponibles={camposDisponibles}
                             onChange={r => {
-                              const reglas = [...condiciones.reglas];
+                              const reglas = [...(condiciones.reglas ?? [])];
                               reglas[idx] = r;
                               setCondiciones({ ...condiciones, reglas });
                             }}
                             onDelete={() => {
-                              const reglas = condiciones.reglas.filter((_, i) => i !== idx);
+                              const reglas = (condiciones.reglas ?? []).filter((_, i) => i !== idx);
                               setCondiciones({ ...condiciones, reglas });
                             }}
                           />
                         ))}
-                        {condiciones.reglas.length === 0 && (
+                        {(condiciones.reglas ?? []).length === 0 && (
                           <p className="text-xs text-slate-400 dark:text-slate-500 italic">
                             Sin reglas — el campo siempre será visible
                           </p>
                         )}
                       </div>
 
-                      {condiciones.reglas.length < 10 && camposDisponibles.length > 0 && (
+                      {(condiciones.reglas ?? []).length < 10 && camposDisponibles.length > 0 && (
                         <button
                           type="button"
                           onClick={() => setCondiciones({
                             ...condiciones,
-                            reglas: [...condiciones.reglas, { campoId: '', operador: 'igual', valor: '' }],
+                            reglas: [...(condiciones.reglas ?? []), { campoId: '', operador: 'igual', valor: '' }],
                           })}
                           className="text-xs text-orange-600 hover:text-orange-700 flex items-center gap-1 self-start"
                         >

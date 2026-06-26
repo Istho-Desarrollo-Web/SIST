@@ -132,9 +132,11 @@ export function FormularioRenderer({ campos = [], secciones = [], valores = {}, 
 }
 
 function CampoGrilla({ campo, value, onChange, disabled }) {
-  const opts = (campo.opciones && typeof campo.opciones === 'object' && !Array.isArray(campo.opciones))
-    ? campo.opciones
-    : {};
+  let rawOpts = campo.opciones;
+  if (typeof rawOpts === 'string') {
+    try { rawOpts = JSON.parse(rawOpts); } catch { rawOpts = {}; }
+  }
+  const opts = (rawOpts && typeof rawOpts === 'object' && !Array.isArray(rawOpts)) ? rawOpts : {};
   const columnas = Array.isArray(opts.columnas) ? opts.columnas : [];
   const filas = Array.isArray(opts.filas) ? opts.filas : [];
   const conObs = Boolean(opts.conObservaciones);

@@ -473,8 +473,9 @@ export function PDFMapper({ campos = [], plantilla, formularioId, mapeoInicial =
               </p>
               {/* Info grilla — solo para tipo grilla */}
               {selectedCampo?.tipo === 'grilla' && (() => {
-                const opts = (selectedCampo.opciones && typeof selectedCampo.opciones === 'object' && !Array.isArray(selectedCampo.opciones))
-                  ? selectedCampo.opciones : {};
+                let rawOpts = selectedCampo.opciones;
+                if (typeof rawOpts === 'string') { try { rawOpts = JSON.parse(rawOpts); } catch { rawOpts = {}; } }
+                const opts = (rawOpts && typeof rawOpts === 'object' && !Array.isArray(rawOpts)) ? rawOpts : {};
                 const filas = Array.isArray(opts.filas) ? opts.filas : [];
                 const columnas = Array.isArray(opts.columnas) ? opts.columnas : [];
                 const fontPt = selectedMapeo.fontTamano || 10;

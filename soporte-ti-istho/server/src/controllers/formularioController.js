@@ -4,7 +4,7 @@ const { descargarBuffer: cloudinaryDescargar } = require('../config/cloudinary')
 const multerUpload = require('../config/multer');
 const {
   Formulario, FormularioCampo, FormularioSeccion,
-  FormularioPdfPlantilla, FormularioPdfMapeo, Usuario,
+  FormularioPdfPlantilla, FormularioPdfMapeo, Usuario, RespuestaCampo,
 } = require('../models');
 const { registrarAuditoria } = require('../services/auditoriaService');
 const { ROLES } = require('../utils/constants');
@@ -192,6 +192,7 @@ async function guardarCampos(req, res, next) {
     const idsEnviados = campos.filter(c => c.id).map(c => parseInt(c.id));
     const idsAEliminar = idsExistentes.filter(id => !idsEnviados.includes(id));
     if (idsAEliminar.length) {
+      await RespuestaCampo.destroy({ where: { campoId: idsAEliminar }, transaction: t });
       await FormularioCampo.destroy({ where: { id: idsAEliminar }, transaction: t });
     }
 
@@ -317,10 +318,21 @@ async function guardarMapeos(req, res, next) {
 
     await FormularioPdfMapeo.destroy({ where: { plantillaId: plantilla.id } });
     if (mapeos && mapeos.length) {
-      // Strip id para que MySQL asigne PKs nuevas sin conflictos
-      await FormularioPdfMapeo.bulkCreate(
-        mapeos.map(({ id: _id, plantillaId: _pid, ...m }) => ({ ...m, plantillaId: plantilla.id })),
-      );
+      // Filtrar mapeos cuyos campoId ya no existen (campos eliminados o recreados)
+      const camposActuales = await FormularioCampo.findAll({
+        where: { formularioId: req.params.id },
+        attributes: ['id'],
+      });
+      const idsValidos = new Set(camposActuales.map(c => c.id));
+      const mapeosValidos = mapeos.filter(m => idsValidos.has(Number(m.campoId)));
+      if (mapeosValidos.length < mapeos.length) {
+        console.warn(`[guardarMapeos] ${mapeos.length - mapeosValidos.length} mapeo(s) descartados por campoId inexistente`);
+      }
+      if (mapeosValidos.length) {
+        await FormularioPdfMapeo.bulkCreate(
+          mapeosValidos.map(({ id: _id, plantillaId: _pid, ...m }) => ({ ...m, plantillaId: plantilla.id })),
+        );
+      }
     }
     const actualizados = await FormularioPdfMapeo.findAll({ where: { plantillaId: plantilla.id } });
     console.log(`[guardarMapeos] formularioId=${req.params.id} plantillaId=${plantilla.id} guardados=${actualizados.length}`);

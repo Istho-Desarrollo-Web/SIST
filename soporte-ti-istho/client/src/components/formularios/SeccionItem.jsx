@@ -297,29 +297,29 @@ export function SeccionItem({
                   <span className="text-xs text-slate-500">siguientes reglas:</span>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  {condiciones.reglas.map((regla, idx) => (
+                  {(condiciones.reglas ?? []).map((regla, idx) => (
                     <ReglaRowSeccion
                       key={idx}
                       regla={regla}
                       camposDisponibles={camposDisponibles}
                       onChange={r => {
-                        const reglas = [...condiciones.reglas];
+                        const reglas = [...(condiciones.reglas ?? [])];
                         reglas[idx] = r;
                         setCondiciones({ ...condiciones, reglas });
                       }}
                       onDelete={() => {
-                        const reglas = condiciones.reglas.filter((_, i) => i !== idx);
+                        const reglas = (condiciones.reglas ?? []).filter((_, i) => i !== idx);
                         setCondiciones({ ...condiciones, reglas });
                       }}
                     />
                   ))}
                 </div>
-                {condiciones.reglas.length < 10 && camposDisponibles.length > 0 && (
+                {(condiciones.reglas ?? []).length < 10 && camposDisponibles.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setCondiciones({
                       ...condiciones,
-                      reglas: [...condiciones.reglas, { campoId: '', operador: 'igual', valor: '' }],
+                      reglas: [...(condiciones.reglas ?? []), { campoId: '', operador: 'igual', valor: '' }],
                     })}
                     className="text-xs text-orange-600 hover:text-orange-700 flex items-center gap-1 self-start"
                   >
