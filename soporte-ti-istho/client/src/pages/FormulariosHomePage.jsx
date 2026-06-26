@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, FileText, Download, Pencil, ClipboardList, Loader2 } from 'lucide-react';
+import { Plus, FileText, Download, Pencil, ClipboardList, Loader2, Eye } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Skeleton } from '../components/common/Skeleton';
@@ -198,12 +198,22 @@ export function FormulariosHomePage() {
                         <Badge variant={f.activo ? 'success' : 'default'}>{f.activo ? 'Activo' : 'Inactivo'}</Badge>
                       </td>
                       <td className="px-4 py-2 text-right">
-                        <button
-                          onClick={() => navigate(`/formularios/${f.id}/editar`)}
-                          className="p-1 rounded hover:bg-slate-100 dark:hover:bg-navy-700 text-slate-500"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => navigate(`/formularios/${f.id}/respuestas`)}
+                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-navy-700 text-slate-500"
+                            title="Ver respuestas"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => navigate(`/formularios/${f.id}/editar`)}
+                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-navy-700 text-slate-500"
+                            title="Editar formulario"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -17,6 +17,7 @@ import { FormulariosHomePage } from './pages/FormulariosHomePage';
 import { FormularioBuilderPage } from './pages/FormularioBuilderPage';
 import { FormularioResponderPage } from './pages/FormularioResponderPage';
 import { FormularioPDFsPage } from './pages/FormularioPDFsPage';
+import { FormularioRespuestasPage } from './pages/FormularioRespuestasPage';
 
 function AppLayout({ children }) {
   return (
@@ -80,6 +81,13 @@ export function AppRoutes() {
       {/* Formularios — Responder (accesible sin auth para formularios públicos) */}
       <Route path="/formularios/:id/responder" element={
         <AppLayout><FormularioResponderPage /></AppLayout>
+      } />
+
+      {/* Formularios — Respuestas (todos los roles autenticados) */}
+      <Route path="/formularios/:id/respuestas" element={
+        <ProtectedRoute>
+          <AppLayout><FormularioRespuestasPage /></AppLayout>
+        </ProtectedRoute>
       } />
 
       {/* Formularios — Builder (solo admin/tecnico) */}
