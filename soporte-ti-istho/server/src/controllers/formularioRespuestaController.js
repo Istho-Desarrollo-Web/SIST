@@ -420,4 +420,121 @@ async function obtenerDetalleRespuesta(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { responder, listarPdfs, descargarPdf, eliminarPdf, asociarSolicitud, listarRespuestasFormulario, obtenerDetalleRespuesta };
+async function exportarRespuestas(req, res, next) {
+  try {
+    const formulario = await Formulario.findByPk(req.params.id, {
+      include: [{ model: FormularioCampo, as: 'campos', order: [['orden', 'ASC']] }],
+    });
+    if (!formulario) return res.status(404).json({ success: false, message: 'Formulario no encontrado' });
+
+    const where = { formularioId: req.params.id };
+    if (req.user.rol === ROLES.USUARIO) where.respondidoPor = req.user.id;
+
+    const respuestas = await FormularioRespuesta.findAll({
+      where,
+      include: [
+        { model: FormularioPdfGenerado, as: 'pdf', attributes: ['id', 'urlCloudinary'] },
+        { model: Usuario, as: 'respondedor', attributes: ['id', 'nombre'] },
+      ],
+      order: [['created_at', 'DESC']],
+    });
+
+    const formato = req.query.formato === 'detalle' ? 'detalle' : 'resumen';
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('Respuestas');
+
+    const NAV_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B2340' } };
+    const HEADER_FONT = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+    const resolverNombre = (r) => r.respondedor?.nombre || r.nombreRespondente || 'Anónimo';
+
+    const formatDate = (d) => {
+      const date = new Date(d);
+      if (isNaN(date)) return '';
+      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    };
+
+    if (formato === 'resumen') {
+      ws.columns = [
+        { header: 'ID', key: 'id', width: 8 },
+        { header: 'Respondido por', key: 'respondidoPor', width: 30 },
+        { header: 'Fecha', key: 'fecha', width: 16 },
+        { header: 'Estado', key: 'estado', width: 14 },
+        { header: 'PDF', key: 'pdf', width: 16 },
+      ];
+      ws.getRow(1).eachCell((cell) => { cell.fill = NAV_FILL; cell.font = HEADER_FONT; });
+
+      for (const r of respuestas) {
+        const rowData = {
+          id: r.id,
+          respondidoPor: resolverNombre(r),
+          fecha: formatDate(r.createdAt),
+          estado: r.estado === 'completado' ? 'Completado' : 'Pendiente',
+          pdf: r.pdf?.urlCloudinary ? { text: 'Descargar', hyperlink: r.pdf.urlCloudinary } : '',
+        };
+        ws.addRow(rowData);
+      }
+    } else {
+      const campoCols = formulario.campos.map((c) => ({
+        header: c.etiqueta,
+        key: `campo_${c.id}`,
+        width: 22,
+      }));
+      ws.columns = [
+        { header: 'ID', key: 'id', width: 8 },
+        { header: 'Respondido por', key: 'respondidoPor', width: 30 },
+        { header: 'Fecha', key: 'fecha', width: 16 },
+        { header: 'Estado', key: 'estado', width: 14 },
+        ...campoCols,
+        { header: 'PDF', key: 'pdf', width: 16 },
+      ];
+      ws.getRow(1).eachCell((cell) => { cell.fill = NAV_FILL; cell.font = HEADER_FONT; });
+
+      const respuestaIds = respuestas.map((r) => r.id);
+      const todosCampos = respuestaIds.length
+        ? await RespuestaCampo.findAll({ where: { respuestaId: { [Op.in]: respuestaIds } } })
+        : [];
+      const camposPorRespuesta = new Map();
+      for (const rc of todosCampos) {
+        if (!camposPorRespuesta.has(rc.respuestaId)) camposPorRespuesta.set(rc.respuestaId, []);
+        camposPorRespuesta.get(rc.respuestaId).push(rc);
+      }
+
+      for (const r of respuestas) {
+        const rowData = {
+          id: r.id,
+          respondidoPor: resolverNombre(r),
+          fecha: formatDate(r.createdAt),
+          estado: r.estado === 'completado' ? 'Completado' : 'Pendiente',
+        };
+        const camposResp = camposPorRespuesta.get(r.id) || [];
+        for (const rc of camposResp) {
+          const campoObj = formulario.campos.find((c) => c.id === rc.campoId);
+          if (!campoObj) continue;
+          if (campoObj.tipo === 'firma' && rc.archivoUrl) {
+            rowData[`campo_${rc.campoId}`] = { text: 'Ver firma', hyperlink: rc.archivoUrl };
+          } else if (campoObj.tipo === 'grilla') {
+            rowData[`campo_${rc.campoId}`] = rc.valor || '';
+          } else {
+            rowData[`campo_${rc.campoId}`] = rc.valor || '';
+          }
+        }
+        rowData.pdf = r.pdf?.urlCloudinary ? { text: 'Descargar', hyperlink: r.pdf.urlCloudinary } : '';
+        ws.addRow(rowData);
+      }
+    }
+
+    const nombreFormulario = formulario.nombre
+      .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="respuestas-${nombreFormulario}.xlsx"`);
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.send(buffer);
+  } catch (err) { next(err); }
+}
+
+module.exports = { responder, listarPdfs, descargarPdf, eliminarPdf, asociarSolicitud, listarRespuestasFormulario, obtenerDetalleRespuesta, exportarRespuestas };

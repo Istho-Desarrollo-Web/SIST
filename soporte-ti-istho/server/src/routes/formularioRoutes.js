@@ -39,6 +39,9 @@ router.post('/:id/mapeos', auth, authorize(ROLES.ADMIN, ROLES.TECNICO), fc.guard
 // Responder formulario (puede ser sin auth si es público — el controller valida)
 router.post('/:id/responder', auth.optional, fr.responder);
 
+// Export Excel de respuestas — ANTES de /:id/respuestas
+router.get('/:id/respuestas/export', auth, fr.exportarRespuestas);
+
 // Listado de respuestas por formulario
 router.get('/:id/respuestas', auth, fr.listarRespuestasFormulario);
 
