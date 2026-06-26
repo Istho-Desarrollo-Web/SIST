@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, FileText, Download, Pencil, ClipboardList } from 'lucide-react';
+import { Plus, FileText, Download, Pencil, ClipboardList, Loader2 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Skeleton } from '../components/common/Skeleton';
@@ -17,6 +17,24 @@ export function FormulariosHomePage() {
   const [misFormularios, setMisFormularios] = useState([]);
   const [misPdfs, setMisPdfs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [descargando, setDescargando] = useState(null);
+
+  async function descargar(r) {
+    setDescargando(r.id);
+    try {
+      const resp = await formulariosApi.descargarPdf(r.id);
+      const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(r.formulario?.nombre || 'formulario').replace(/[^a-zA-Z0-9]/g, '_')}_${r.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Error al descargar el PDF');
+    } finally {
+      setDescargando(null);
+    }
+  }
 
   useEffect(() => {
     const promises = [formulariosApi.listarDisponibles()];
@@ -110,14 +128,15 @@ export function FormulariosHomePage() {
                     </p>
                   </div>
                   {r.pdf?.urlCloudinary && (
-                    <a
-                      href={r.pdf.urlCloudinary}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500"
+                    <button
+                      onClick={() => descargar(r)}
+                      disabled={descargando === r.id}
+                      className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500 disabled:opacity-50"
                     >
-                      <Download className="w-4 h-4" />
-                    </a>
+                      {descargando === r.id
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Download className="w-4 h-4" />}
+                    </button>
                   )}
                 </div>
               ))}
