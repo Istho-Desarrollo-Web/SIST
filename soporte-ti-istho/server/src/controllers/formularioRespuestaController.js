@@ -371,4 +371,53 @@ async function listarRespuestasFormulario(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { responder, listarPdfs, descargarPdf, eliminarPdf, asociarSolicitud, listarRespuestasFormulario };
+async function obtenerDetalleRespuesta(req, res, next) {
+  try {
+    const respuesta = await FormularioRespuesta.findByPk(req.params.id, {
+      include: [
+        { model: FormularioPdfGenerado, as: 'pdf', attributes: ['id', 'urlCloudinary'] },
+        { model: Usuario, as: 'respondedor', attributes: ['id', 'nombre'] },
+      ],
+    });
+    if (!respuesta) return res.status(404).json({ success: false, message: 'Respuesta no encontrada' });
+    if (req.user.rol === ROLES.USUARIO && respuesta.respondidoPor !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Sin permiso' });
+    }
+
+    const respuestaCampos = await RespuestaCampo.findAll({
+      where: { respuestaId: respuesta.id },
+    });
+    const campos = await FormularioCampo.findAll({
+      where: { formularioId: respuesta.formularioId },
+      order: [['orden', 'ASC']],
+    });
+
+    const camposMap = new Map(campos.map((c) => [c.id, c]));
+    const camposDetalle = respuestaCampos.map((rc) => {
+      const campo = camposMap.get(rc.campoId);
+      return {
+        etiqueta: campo?.etiqueta || `Campo ${rc.campoId}`,
+        tipo: campo?.tipo || 'texto_corto',
+        valor: rc.valor,
+        archivoUrl: rc.archivoUrl,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        respuesta: {
+          id: respuesta.id,
+          estado: respuesta.estado,
+          createdAt: respuesta.createdAt,
+          respondedor: respuesta.respondedor,
+          nombreRespondente: respuesta.nombreRespondente,
+          pdf: respuesta.pdf,
+        },
+        campos: camposDetalle,
+      },
+    });
+  } catch (err) { next(err); }
+}
+
+module.exports = { responder, listarPdfs, descargarPdf, eliminarPdf, asociarSolicitud, listarRespuestasFormulario, obtenerDetalleRespuesta };

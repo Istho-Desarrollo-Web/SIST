@@ -46,4 +46,7 @@ router.get('/:id/respuestas', auth, fr.listarRespuestasFormulario);
 router.get('/respuestas/:id/pdf', auth, fr.descargarPdf);
 router.put('/respuestas/:id/solicitud', auth, authorize(ROLES.ADMIN, ROLES.TECNICO), fr.asociarSolicitud);
 
+// Detalle de campos de una respuesta específica
+router.get('/respuestas/:id/detalle', auth, fr.obtenerDetalleRespuesta);
+
 module.exports = router;
