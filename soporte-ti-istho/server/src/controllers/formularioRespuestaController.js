@@ -433,7 +433,7 @@ async function exportarRespuestas(req, res, next) {
     const respuestas = await FormularioRespuesta.findAll({
       where,
       include: [
-        { model: FormularioPdfGenerado, as: 'pdf', attributes: ['id', 'urlCloudinary'] },
+        { model: FormularioPdfGenerado, as: 'pdf', attributes: ['id', 'urlCloudinary', 'publicId'] },
         { model: Usuario, as: 'respondedor', attributes: ['id', 'nombre'] },
       ],
       order: [['created_at', 'DESC']],
@@ -460,6 +460,14 @@ async function exportarRespuestas(req, res, next) {
       return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
     };
 
+    const generarUrlPdf = (pdf) => {
+      if (!pdf?.urlCloudinary) return null;
+      if (HAS_CLOUDINARY && pdf.publicId) {
+        return cloudinary.utils.private_download_url(pdf.publicId, null, { resource_type: 'raw', type: 'upload' });
+      }
+      return pdf.urlCloudinary;
+    };
+
     if (formato === 'resumen') {
       ws.columns = [
         { header: 'ID', key: 'id', width: 8 },
@@ -471,12 +479,13 @@ async function exportarRespuestas(req, res, next) {
       ws.getRow(1).eachCell((cell) => { cell.fill = NAV_FILL; cell.font = HEADER_FONT; });
 
       for (const r of respuestas) {
+        const pdfUrl = generarUrlPdf(r.pdf);
         const rowData = {
           id: r.id,
           respondidoPor: safeCell(resolverNombre(r)),
-          fecha: formatDate(r.createdAt),
+          fecha: formatDate(r.createdAt ?? r.created_at),
           estado: r.estado === 'completado' ? 'Completado' : 'Pendiente',
-          pdf: r.pdf?.urlCloudinary ? { text: 'Descargar', hyperlink: r.pdf.urlCloudinary } : '',
+          pdf: pdfUrl ? { text: 'Descargar', hyperlink: pdfUrl } : '',
         };
         ws.addRow(rowData);
       }
@@ -507,10 +516,11 @@ async function exportarRespuestas(req, res, next) {
       }
 
       for (const r of respuestas) {
+        const pdfUrl = generarUrlPdf(r.pdf);
         const rowData = {
           id: r.id,
           respondidoPor: safeCell(resolverNombre(r)),
-          fecha: formatDate(r.createdAt),
+          fecha: formatDate(r.createdAt ?? r.created_at),
           estado: r.estado === 'completado' ? 'Completado' : 'Pendiente',
         };
         const camposResp = camposPorRespuesta.get(r.id) || [];
@@ -525,7 +535,7 @@ async function exportarRespuestas(req, res, next) {
             rowData[`campo_${rc.campoId}`] = safeCell(rc.valor || '');
           }
         }
-        rowData.pdf = r.pdf?.urlCloudinary ? { text: 'Descargar', hyperlink: r.pdf.urlCloudinary } : '';
+        rowData.pdf = pdfUrl ? { text: 'Descargar', hyperlink: pdfUrl } : '';
         ws.addRow(rowData);
       }
     }
