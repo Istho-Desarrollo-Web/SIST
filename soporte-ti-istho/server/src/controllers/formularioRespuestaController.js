@@ -62,6 +62,9 @@ async function responder(req, res, next) {
       respondidoPor: req.user?.id || null,
       ipRespondente: req.ip,
       estado: 'pendiente',
+      nombreRespondente: (!req.user && req.body.nombreRespondente)
+        ? String(req.body.nombreRespondente).slice(0, 200)
+        : null,
     });
 
     const { campos: valoresCampos = {} } = req.body;
