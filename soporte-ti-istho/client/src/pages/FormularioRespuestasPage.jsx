@@ -29,6 +29,7 @@ export function FormularioRespuestasPage() {
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(null);
   const [detalleId, setDetalleId] = useState(null);
+  const [descargando, setDescargando] = useState(null);
 
   const [filtroDesde, setFiltroDesde] = useState('');
   const [filtroHasta, setFiltroHasta] = useState('');
@@ -81,6 +82,23 @@ export function FormularioRespuestasPage() {
       toast.error('Error al exportar');
     } finally {
       setExportando(null);
+    }
+  }
+
+  async function descargar(r) {
+    setDescargando(r.id);
+    try {
+      const resp = await formulariosApi.descargarPdf(r.id);
+      const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(formularioNombre || 'formulario').replace(/[^a-zA-Z0-9]/g, '_')}_${r.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Error al descargar el PDF');
+    } finally {
+      setDescargando(null);
     }
   }
 
@@ -202,6 +220,18 @@ export function FormularioRespuestasPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
+                        {r.pdf?.urlCloudinary && (
+                          <button
+                            onClick={() => descargar(r)}
+                            disabled={descargando === r.id}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-navy-800 border border-slate-200 dark:border-navy-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-700 transition-colors disabled:opacity-50"
+                          >
+                            {descargando === r.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Download className="w-3.5 h-3.5" />}
+                            PDF
+                          </button>
+                        )}
                         <button
                           onClick={() => setDetalleId(r.id)}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-navy-50 dark:bg-navy-700 text-navy-600 dark:text-slate-300 hover:bg-navy-100 dark:hover:bg-navy-600 transition-colors"
