@@ -392,14 +392,14 @@ async function obtenerDetalleRespuesta(req, res, next) {
       order: [['orden', 'ASC']],
     });
 
-    const camposMap = new Map(campos.map((c) => [c.id, c]));
-    const camposDetalle = respuestaCampos.map((rc) => {
-      const campo = camposMap.get(rc.campoId);
+    const respuestaCamposMap = new Map(respuestaCampos.map((rc) => [rc.campoId, rc]));
+    const camposDetalle = campos.map((c) => {
+      const rc = respuestaCamposMap.get(c.id);
       return {
-        etiqueta: campo?.etiqueta || `Campo ${rc.campoId}`,
-        tipo: campo?.tipo || 'texto_corto',
-        valor: rc.valor,
-        archivoUrl: rc.archivoUrl,
+        etiqueta: c.etiqueta,
+        tipo: c.tipo,
+        valor: rc?.valor ?? null,
+        archivoUrl: rc?.archivoUrl ?? null,
       };
     });
 
