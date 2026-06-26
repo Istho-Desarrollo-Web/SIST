@@ -409,7 +409,7 @@ async function obtenerDetalleRespuesta(req, res, next) {
         respuesta: {
           id: respuesta.id,
           estado: respuesta.estado,
-          createdAt: respuesta.createdAt,
+          createdAt: respuesta.createdAt ?? respuesta.dataValues?.created_at ?? null,
           respondedor: respuesta.respondedor,
           nombreRespondente: respuesta.nombreRespondente,
           pdf: respuesta.pdf,
