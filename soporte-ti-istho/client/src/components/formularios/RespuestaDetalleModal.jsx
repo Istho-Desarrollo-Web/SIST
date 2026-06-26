@@ -48,7 +48,7 @@ export function RespuestaDetalleModal({ respuestaId, onClose }) {
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-slate-400 uppercase font-semibold">Fecha</span>
-              <span className="text-sm text-slate-700 dark:text-slate-300">{formatFecha(data.respuesta.createdAt)}</span>
+              <span className="text-sm text-slate-700 dark:text-slate-300">{formatFecha(data.respuesta.createdAt ?? data.respuesta.created_at)}</span>
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-xs text-slate-400 uppercase font-semibold">Estado</span>
