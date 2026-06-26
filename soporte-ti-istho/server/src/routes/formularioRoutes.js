@@ -39,6 +39,9 @@ router.post('/:id/mapeos', auth, authorize(ROLES.ADMIN, ROLES.TECNICO), fc.guard
 // Responder formulario (puede ser sin auth si es público — el controller valida)
 router.post('/:id/responder', auth.optional, fr.responder);
 
+// Listado de respuestas por formulario
+router.get('/:id/respuestas', auth, fr.listarRespuestasFormulario);
+
 // PDF de respuesta
 router.get('/respuestas/:id/pdf', auth, fr.descargarPdf);
 router.put('/respuestas/:id/solicitud', auth, authorize(ROLES.ADMIN, ROLES.TECNICO), fr.asociarSolicitud);

@@ -10,6 +10,7 @@ const {
 const { registrarAuditoria } = require('../services/auditoriaService');
 const { llenarPDF } = require('../services/pdfService');
 const { ROLES } = require('../utils/constants');
+const { Op } = require('sequelize');
 
 function evaluarCondicion(condicion, valores) {
   if (!condicion || !condicion.reglas || condicion.reglas.length === 0) return true;
@@ -306,4 +307,68 @@ async function asociarSolicitud(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { responder, listarPdfs, descargarPdf, eliminarPdf, asociarSolicitud };
+async function listarRespuestasFormulario(req, res, next) {
+  try {
+    const formulario = await Formulario.findByPk(req.params.id, {
+      attributes: ['id', 'nombre'],
+    });
+    if (!formulario) return res.status(404).json({ success: false, message: 'Formulario no encontrado' });
+
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const where = { formularioId: req.params.id };
+    if (req.user.rol === ROLES.USUARIO) where.respondidoPor = req.user.id;
+
+    if (req.query.desde || req.query.hasta) {
+      where.createdAt = {};
+      if (req.query.desde) where.createdAt[Op.gte] = new Date(req.query.desde);
+      if (req.query.hasta) {
+        const hasta = new Date(req.query.hasta);
+        hasta.setHours(23, 59, 59, 999);
+        where.createdAt[Op.lte] = hasta;
+      }
+    }
+
+    const include = [
+      { model: FormularioPdfGenerado, as: 'pdf', attributes: ['id', 'urlCloudinary'] },
+      { model: Usuario, as: 'respondedor', attributes: ['id', 'nombre'] },
+    ];
+
+    let rows, count;
+
+    if (req.query.buscar) {
+      const all = await FormularioRespuesta.findAll({ where, include, order: [['created_at', 'DESC']] });
+      const buscar = req.query.buscar.toLowerCase();
+      const filtered = all.filter((r) => {
+        const nombre = r.respondedor?.nombre || r.nombreRespondente || '';
+        return nombre.toLowerCase().includes(buscar);
+      });
+      count = filtered.length;
+      rows = filtered.slice(offset, offset + limit);
+    } else {
+      ({ rows, count } = await FormularioRespuesta.findAndCountAll({
+        where,
+        include,
+        order: [['created_at', 'DESC']],
+        limit,
+        offset,
+        distinct: true,
+      }));
+    }
+
+    res.json({
+      success: true,
+      data: {
+        formulario: { id: formulario.id, nombre: formulario.nombre },
+        respuestas: rows,
+        total: count,
+        page,
+        totalPages: Math.ceil(count / limit),
+      },
+    });
+  } catch (err) { next(err); }
+}
+
+module.exports = { responder, listarPdfs, descargarPdf, eliminarPdf, asociarSolicitud, listarRespuestasFormulario };
