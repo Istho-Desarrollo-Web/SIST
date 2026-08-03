@@ -11,6 +11,9 @@ function formatFecha(val) {
   return isNaN(d) ? '—' : d.toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
+const PDF_TIPO_LABEL = { plantilla: 'Plantilla', nativo: 'Generado' };
+const PDF_TIPO_VARIANT = { plantilla: 'default', nativo: 'info' };
+
 export function RespuestaDetalleModal({ respuestaId, onClose }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -56,6 +59,14 @@ export function RespuestaDetalleModal({ respuestaId, onClose }) {
                 {data.respuesta.estado === 'completado' ? 'Completado' : 'Pendiente'}
               </Badge>
             </div>
+            {data.respuesta.pdf?.urlCloudinary && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-slate-400 uppercase font-semibold">PDF</span>
+                <Badge variant={PDF_TIPO_VARIANT[data.respuesta.pdf.tipo] ?? 'default'}>
+                  {PDF_TIPO_LABEL[data.respuesta.pdf.tipo] ?? 'PDF'}
+                </Badge>
+              </div>
+            )}
           </div>
 
           {/* Campos */}
