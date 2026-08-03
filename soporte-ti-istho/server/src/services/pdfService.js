@@ -15,20 +15,62 @@ const NATIVO_GRAY_TEXT = rgb(0.4, 0.4, 0.4);
 const NATIVO_GRAY_LINE = rgb(0.8, 0.8, 0.8);
 const NATIVO_BLACK = rgb(0.1, 0.1, 0.1);
 
-function wrapTextoNativo(font, size, texto, maxWidth) {
-  const palabras = String(texto).split(/\s+/);
-  const lineas = [];
+// pdf-lib's standard fonts (Helvetica) only support the WinAnsi character set.
+// Any character outside \x00-\xFF (emoji, CJK, etc.) throws inside drawText/
+// widthOfTextAtSize. This is a conservative Latin-1 approximation of WinAnsi —
+// good enough to eliminate the crash for realistic input without a full cp1252 table.
+function sanitizarTextoPdf(texto) {
+  return String(texto).replace(/[^\x00-\xFF]/g, '?');
+}
+
+function partirPalabraLarga(font, size, palabra, maxWidth) {
+  const chunks = [];
   let actual = '';
-  for (const palabra of palabras) {
-    const prueba = actual ? `${actual} ${palabra}` : palabra;
+  for (const ch of palabra) {
+    const prueba = actual + ch;
     if (actual && font.widthOfTextAtSize(prueba, size) > maxWidth) {
-      lineas.push(actual);
-      actual = palabra;
+      chunks.push(actual);
+      actual = ch;
     } else {
       actual = prueba;
     }
   }
-  if (actual) lineas.push(actual);
+  if (actual) chunks.push(actual);
+  return chunks;
+}
+
+function wrapTextoNativo(font, size, texto, maxWidth) {
+  const textoSanitizado = sanitizarTextoPdf(texto);
+  const lineas = [];
+  for (const lineaOriginal of textoSanitizado.split('\n')) {
+    const palabras = lineaOriginal.split(/\s+/).filter((p) => p.length > 0);
+    if (palabras.length === 0) {
+      lineas.push('');
+      continue;
+    }
+    let actual = '';
+    for (const palabra of palabras) {
+      if (font.widthOfTextAtSize(palabra, size) > maxWidth) {
+        // Palabra individual no cabe ni en una línea vacía: partir por caracteres
+        if (actual) {
+          lineas.push(actual);
+          actual = '';
+        }
+        const chunks = partirPalabraLarga(font, size, palabra, maxWidth);
+        for (let i = 0; i < chunks.length - 1; i++) lineas.push(chunks[i]);
+        actual = chunks[chunks.length - 1] || '';
+        continue;
+      }
+      const prueba = actual ? `${actual} ${palabra}` : palabra;
+      if (actual && font.widthOfTextAtSize(prueba, size) > maxWidth) {
+        lineas.push(actual);
+        actual = palabra;
+      } else {
+        actual = prueba;
+      }
+    }
+    if (actual) lineas.push(actual);
+  }
   return lineas;
 }
 
@@ -342,7 +384,7 @@ function dibujarGrillaNativa(ctx, { campo, rc, fontRegular, fontBold, nuevaPagin
   const alturaTotal = 16 + rowH * (filasLabels.length + 1) + 14;
   if (espacioDisponible() < alturaTotal) nuevaPagina(false);
 
-  ctx.page.drawText(campo.etiqueta, {
+  ctx.page.drawText(sanitizarTextoPdf(campo.etiqueta), {
     x: NATIVO_MARGIN, y: ctx.y, size: 9, font: fontBold, color: NATIVO_GRAY_TEXT,
   });
   ctx.y -= 16;
@@ -359,9 +401,10 @@ function dibujarGrillaNativa(ctx, { campo, rc, fontRegular, fontBold, nuevaPagin
     x: NATIVO_MARGIN + 4, y: ctx.y - rowH + 5, size: 8, font: fontBold, color: NATIVO_BLACK,
   });
   columnas.forEach((col, c) => {
+    const colTexto = sanitizarTextoPdf(col);
     const cx = NATIVO_MARGIN + labelW + c * colW;
-    const tw = fontBold.widthOfTextAtSize(String(col), 8);
-    ctx.page.drawText(String(col), {
+    const tw = fontBold.widthOfTextAtSize(colTexto, 8);
+    ctx.page.drawText(colTexto, {
       x: cx + (colW - tw) / 2, y: ctx.y - rowH + 5, size: 8, font: fontBold, color: NATIVO_BLACK,
     });
   });
@@ -379,7 +422,8 @@ function dibujarGrillaNativa(ctx, { campo, rc, fontRegular, fontBold, nuevaPagin
         x: NATIVO_MARGIN, y: ctx.y - rowH, width: NATIVO_CONTENT_W, height: rowH, color: rgb(0.96, 0.96, 0.96),
       });
     }
-    const filaLabelTexto = String(filaLabel).length > 45 ? `${String(filaLabel).slice(0, 42)}...` : String(filaLabel);
+    const filaLabelSan = sanitizarTextoPdf(filaLabel);
+    const filaLabelTexto = filaLabelSan.length > 45 ? `${filaLabelSan.slice(0, 42)}...` : filaLabelSan;
     ctx.page.drawText(filaLabelTexto, {
       x: NATIVO_MARGIN + 4, y: ctx.y - rowH + 5, size: 8, font: fontRegular, color: NATIVO_BLACK,
     });
@@ -392,9 +436,8 @@ function dibujarGrillaNativa(ctx, { campo, rc, fontRegular, fontBold, nuevaPagin
       }
     });
     if (conObs && entry.observacion) {
-      const obsTexto = String(entry.observacion).length > 22
-        ? `${String(entry.observacion).slice(0, 19)}...`
-        : String(entry.observacion);
+      const obsSan = sanitizarTextoPdf(entry.observacion);
+      const obsTexto = obsSan.length > 22 ? `${obsSan.slice(0, 19)}...` : obsSan;
       ctx.page.drawText(obsTexto, {
         x: NATIVO_MARGIN + labelW + colsW + 4, y: ctx.y - rowH + 5, size: 7, font: fontRegular, color: NATIVO_BLACK,
       });
@@ -425,7 +468,8 @@ async function generarPdfNativo({ formulario, respuesta, respuestaCampos, campos
   const fechaTexto = new Date(respuesta.createdAt || Date.now()).toLocaleString('es-CO', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
-  const nombreMostrado = nombreRespondente || 'Anónimo';
+  const nombreFormularioTexto = sanitizarTextoPdf(formulario.nombre);
+  const nombreMostrado = sanitizarTextoPdf(nombreRespondente || 'Anónimo');
 
   const ctx = { pdfDoc, page: null, y: 0 };
 
@@ -456,7 +500,7 @@ async function generarPdfNativo({ formulario, respuesta, respuestaCampos, campos
       });
 
       ctx.y = NATIVO_PAGE_H - NATIVO_HEADER_H - 30;
-      ctx.page.drawText(formulario.nombre, {
+      ctx.page.drawText(nombreFormularioTexto, {
         x: NATIVO_MARGIN, y: ctx.y, size: 16, font: fontBold, color: NATIVO_BLACK,
       });
       ctx.y -= 20;
@@ -467,7 +511,7 @@ async function generarPdfNativo({ formulario, respuesta, respuestaCampos, campos
       ctx.y -= 25;
     } else {
       ctx.y = NATIVO_PAGE_H - NATIVO_MARGIN;
-      const encabezado = `${formulario.nombre}  ·  ${folio}`;
+      const encabezado = `${nombreFormularioTexto}  ·  ${folio}`;
       ctx.page.drawText(encabezado, {
         x: NATIVO_MARGIN, y: ctx.y, size: 10, font: fontBold, color: NATIVO_GRAY_TEXT,
       });
@@ -478,72 +522,99 @@ async function generarPdfNativo({ formulario, respuesta, respuestaCampos, campos
   nuevaPagina(true);
 
   const campoMap = new Map(respuestaCampos.map((rc) => [rc.campoId, rc]));
-  const camposOrdenados = campos
-    .filter((c) => campoMap.has(c.id))
-    .sort((a, b) => a.orden - b.orden);
+  const camposConRespuesta = campos.filter((c) => campoMap.has(c.id));
 
   const seccionMap = new Map((secciones || []).map((s) => [s.id, s]));
-  let seccionActual;
 
-  for (const campo of camposOrdenados) {
-    const seccion = campo.seccionId ? seccionMap.get(campo.seccionId) : null;
-    const mostrarSeccion = seccion && seccion.visibleParaUsuario;
-    if (mostrarSeccion && seccion.id !== seccionActual) {
+  // Agrupar campos replicando exactamente el algoritmo de
+  // client/src/components/formularios/FormularioRenderer.jsx (líneas 68-99):
+  // 1) una entrada por cada sección visible (en el orden del array `secciones`,
+  //    sin reordenar), con sus campos ordenados por `orden`.
+  // 2) un único grupo (sin encabezado) con todos los campos de secciones NO visibles.
+  // 3) un único grupo (sin encabezado) con los campos sin sección o con seccionId huérfano.
+  const grupos = [];
+
+  const seccionesConHeader = (secciones || []).filter((s) => s.visibleParaUsuario);
+  for (const seccion of seccionesConHeader) {
+    const secCampos = camposConRespuesta
+      .filter((c) => c.seccionId === seccion.id)
+      .sort((a, b) => a.orden - b.orden);
+    if (secCampos.length > 0) {
+      grupos.push({ tipo: 'visible', seccion, campos: secCampos });
+    }
+  }
+
+  const seccionesOcultas = (secciones || []).filter((s) => !s.visibleParaUsuario);
+  const camposOcultos = camposConRespuesta
+    .filter((c) => c.seccionId && seccionesOcultas.some((s) => s.id === c.seccionId))
+    .sort((a, b) => a.orden - b.orden);
+  if (camposOcultos.length > 0) {
+    grupos.push({ tipo: 'oculto', campos: camposOcultos });
+  }
+
+  const camposSinSeccion = camposConRespuesta
+    .filter((c) => !c.seccionId || !seccionMap.has(c.seccionId))
+    .sort((a, b) => a.orden - b.orden);
+  if (camposSinSeccion.length > 0) {
+    grupos.push({ tipo: 'sin_seccion', campos: camposSinSeccion });
+  }
+
+  for (const grupo of grupos) {
+    if (grupo.tipo === 'visible') {
       if (espacioDisponible() < 30) nuevaPagina(false);
       ctx.page.drawRectangle({
         x: NATIVO_MARGIN, y: ctx.y - 18, width: NATIVO_CONTENT_W, height: 20, color: rgb(0.93, 0.94, 0.97),
       });
-      ctx.page.drawText(seccion.nombre, {
+      ctx.page.drawText(sanitizarTextoPdf(grupo.seccion.nombre), {
         x: NATIVO_MARGIN + 6, y: ctx.y - 13, size: 10, font: fontBold, color: NATIVO_NAVY,
       });
       ctx.y -= 30;
-      seccionActual = seccion.id;
-    } else if (!mostrarSeccion) {
-      seccionActual = undefined;
     }
 
-    const rc = campoMap.get(campo.id);
+    for (const campo of grupo.campos) {
+      const rc = campoMap.get(campo.id);
 
-    if (campo.tipo === 'firma' && rc.archivoUrl) {
-      if (espacioDisponible() < 80) nuevaPagina(false);
-      ctx.page.drawText(campo.etiqueta, {
+      if (campo.tipo === 'firma' && rc.archivoUrl) {
+        if (espacioDisponible() < 80) nuevaPagina(false);
+        ctx.page.drawText(sanitizarTextoPdf(campo.etiqueta), {
+          x: NATIVO_MARGIN, y: ctx.y, size: 9, font: fontBold, color: NATIVO_GRAY_TEXT,
+        });
+        ctx.y -= 14;
+        try {
+          const imgResp = await axios.get(rc.archivoUrl, { responseType: 'arraybuffer' });
+          const pngImage = await ctx.pdfDoc.embedPng(imgResp.data);
+          const dims = pngImage.scaleToFit(150, 60);
+          ctx.page.drawImage(pngImage, { x: NATIVO_MARGIN, y: ctx.y - dims.height, width: dims.width, height: dims.height });
+          ctx.y -= dims.height + 15;
+        } catch (imgErr) {
+          console.warn(`[pdfService] generarPdfNativo: firma fallo campoId=${campo.id}:`, imgErr.message);
+          ctx.y -= 15;
+        }
+        continue;
+      }
+
+      if (campo.tipo === 'grilla' && rc.valor) {
+        dibujarGrillaNativa(ctx, { campo, rc, fontRegular, fontBold, nuevaPagina, espacioDisponible });
+        continue;
+      }
+
+      const valorTexto = (rc.valor && rc.valor.trim()) || 'Sin respuesta';
+      const lineas = wrapTextoNativo(fontRegular, 11, valorTexto, NATIVO_CONTENT_W);
+      const altoNecesario = 14 + lineas.length * 14 + 12;
+      if (espacioDisponible() < altoNecesario) nuevaPagina(false);
+
+      ctx.page.drawText(sanitizarTextoPdf(campo.etiqueta), {
         x: NATIVO_MARGIN, y: ctx.y, size: 9, font: fontBold, color: NATIVO_GRAY_TEXT,
       });
       ctx.y -= 14;
-      try {
-        const imgResp = await axios.get(rc.archivoUrl, { responseType: 'arraybuffer' });
-        const pngImage = await ctx.pdfDoc.embedPng(imgResp.data);
-        const dims = pngImage.scaleToFit(150, 60);
-        ctx.page.drawImage(pngImage, { x: NATIVO_MARGIN, y: ctx.y - dims.height, width: dims.width, height: dims.height });
-        ctx.y -= dims.height + 15;
-      } catch (imgErr) {
-        console.warn(`[pdfService] generarPdfNativo: firma fallo campoId=${campo.id}:`, imgErr.message);
-        ctx.y -= 15;
+      for (const linea of lineas) {
+        ctx.page.drawText(linea, {
+          x: NATIVO_MARGIN, y: ctx.y, size: 11, font: fontRegular, color: NATIVO_BLACK,
+        });
+        ctx.y -= 14;
       }
-      continue;
+      ctx.y -= 12;
     }
-
-    if (campo.tipo === 'grilla' && rc.valor) {
-      dibujarGrillaNativa(ctx, { campo, rc, fontRegular, fontBold, nuevaPagina, espacioDisponible });
-      continue;
-    }
-
-    const valorTexto = rc.valor || 'Sin respuesta';
-    const lineas = wrapTextoNativo(fontRegular, 11, valorTexto, NATIVO_CONTENT_W);
-    const altoNecesario = 14 + lineas.length * 14 + 12;
-    if (espacioDisponible() < altoNecesario) nuevaPagina(false);
-
-    ctx.page.drawText(campo.etiqueta, {
-      x: NATIVO_MARGIN, y: ctx.y, size: 9, font: fontBold, color: NATIVO_GRAY_TEXT,
-    });
-    ctx.y -= 14;
-    for (const linea of lineas) {
-      ctx.page.drawText(linea, {
-        x: NATIVO_MARGIN, y: ctx.y, size: 11, font: fontRegular, color: NATIVO_BLACK,
-      });
-      ctx.y -= 14;
-    }
-    ctx.y -= 12;
   }
 
   const paginas = ctx.pdfDoc.getPages();
