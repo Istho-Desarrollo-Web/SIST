@@ -326,6 +326,95 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos, campos = []) {
   return Buffer.from(await pdfDoc.save());
 }
 
+function dibujarGrillaNativa(ctx, { campo, rc, fontRegular, fontBold, nuevaPagina, espacioDisponible }) {
+  let grillaData = [];
+  try {
+    const parsed = JSON.parse(rc.valor);
+    if (Array.isArray(parsed)) grillaData = parsed;
+  } catch { /* valor no es JSON válido */ }
+
+  const opciones = campo.opciones && typeof campo.opciones === 'object' ? campo.opciones : {};
+  const filasLabels = Array.isArray(opciones.filas) ? opciones.filas : [];
+  const columnas = Array.isArray(opciones.columnas) ? opciones.columnas : ['B', 'R', 'M', 'N/A'];
+  const conObs = Boolean(opciones.conObservaciones);
+
+  const rowH = 18;
+  const alturaTotal = 16 + rowH * (filasLabels.length + 1) + 14;
+  if (espacioDisponible() < alturaTotal) nuevaPagina(false);
+
+  ctx.page.drawText(campo.etiqueta, {
+    x: NATIVO_MARGIN, y: ctx.y, size: 9, font: fontBold, color: NATIVO_GRAY_TEXT,
+  });
+  ctx.y -= 16;
+
+  const labelW = NATIVO_CONTENT_W * 0.4;
+  const obsW = conObs ? NATIVO_CONTENT_W * 0.2 : 0;
+  const colsW = NATIVO_CONTENT_W - labelW - obsW;
+  const colW = colsW / columnas.length;
+
+  ctx.page.drawRectangle({
+    x: NATIVO_MARGIN, y: ctx.y - rowH, width: NATIVO_CONTENT_W, height: rowH, color: rgb(0.9, 0.9, 0.9),
+  });
+  ctx.page.drawText('Ítem', {
+    x: NATIVO_MARGIN + 4, y: ctx.y - rowH + 5, size: 8, font: fontBold, color: NATIVO_BLACK,
+  });
+  columnas.forEach((col, c) => {
+    const cx = NATIVO_MARGIN + labelW + c * colW;
+    const tw = fontBold.widthOfTextAtSize(String(col), 8);
+    ctx.page.drawText(String(col), {
+      x: cx + (colW - tw) / 2, y: ctx.y - rowH + 5, size: 8, font: fontBold, color: NATIVO_BLACK,
+    });
+  });
+  if (conObs) {
+    ctx.page.drawText('Obs.', {
+      x: NATIVO_MARGIN + labelW + colsW + 4, y: ctx.y - rowH + 5, size: 8, font: fontBold, color: NATIVO_BLACK,
+    });
+  }
+  ctx.y -= rowH;
+
+  filasLabels.forEach((filaLabel, i) => {
+    const entry = grillaData.find((e) => Number(e.fila) === i) || { columna: null, observacion: '' };
+    if (i % 2 === 0) {
+      ctx.page.drawRectangle({
+        x: NATIVO_MARGIN, y: ctx.y - rowH, width: NATIVO_CONTENT_W, height: rowH, color: rgb(0.96, 0.96, 0.96),
+      });
+    }
+    const filaLabelTexto = String(filaLabel).length > 45 ? `${String(filaLabel).slice(0, 42)}...` : String(filaLabel);
+    ctx.page.drawText(filaLabelTexto, {
+      x: NATIVO_MARGIN + 4, y: ctx.y - rowH + 5, size: 8, font: fontRegular, color: NATIVO_BLACK,
+    });
+    columnas.forEach((col, c) => {
+      if (entry.columna === col) {
+        const cx = NATIVO_MARGIN + labelW + c * colW;
+        ctx.page.drawRectangle({
+          x: cx + 3, y: ctx.y - rowH + 3, width: colW - 6, height: rowH - 6, color: NATIVO_NAVY,
+        });
+      }
+    });
+    if (conObs && entry.observacion) {
+      const obsTexto = String(entry.observacion).length > 22
+        ? `${String(entry.observacion).slice(0, 19)}...`
+        : String(entry.observacion);
+      ctx.page.drawText(obsTexto, {
+        x: NATIVO_MARGIN + labelW + colsW + 4, y: ctx.y - rowH + 5, size: 7, font: fontRegular, color: NATIVO_BLACK,
+      });
+    }
+    ctx.page.drawLine({
+      start: { x: NATIVO_MARGIN, y: ctx.y - rowH },
+      end: { x: NATIVO_MARGIN + NATIVO_CONTENT_W, y: ctx.y - rowH },
+      thickness: 0.3, color: NATIVO_GRAY_LINE,
+    });
+    ctx.y -= rowH;
+  });
+
+  ctx.page.drawLine({
+    start: { x: NATIVO_MARGIN, y: ctx.y },
+    end: { x: NATIVO_MARGIN + NATIVO_CONTENT_W, y: ctx.y },
+    thickness: 0.5, color: NATIVO_GRAY_LINE,
+  });
+  ctx.y -= 14;
+}
+
 async function generarPdfNativo({ formulario, respuesta, respuestaCampos, campos, secciones = [], nombreRespondente }) {
   const pdfDoc = await PDFDocument.create();
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -393,8 +482,51 @@ async function generarPdfNativo({ formulario, respuesta, respuestaCampos, campos
     .filter((c) => campoMap.has(c.id))
     .sort((a, b) => a.orden - b.orden);
 
+  const seccionMap = new Map((secciones || []).map((s) => [s.id, s]));
+  let seccionActual;
+
   for (const campo of camposOrdenados) {
+    const seccion = campo.seccionId ? seccionMap.get(campo.seccionId) : null;
+    const mostrarSeccion = seccion && seccion.visibleParaUsuario;
+    if (mostrarSeccion && seccion.id !== seccionActual) {
+      if (espacioDisponible() < 30) nuevaPagina(false);
+      ctx.page.drawRectangle({
+        x: NATIVO_MARGIN, y: ctx.y - 18, width: NATIVO_CONTENT_W, height: 20, color: rgb(0.93, 0.94, 0.97),
+      });
+      ctx.page.drawText(seccion.nombre, {
+        x: NATIVO_MARGIN + 6, y: ctx.y - 13, size: 10, font: fontBold, color: NATIVO_NAVY,
+      });
+      ctx.y -= 30;
+      seccionActual = seccion.id;
+    } else if (!mostrarSeccion) {
+      seccionActual = undefined;
+    }
+
     const rc = campoMap.get(campo.id);
+
+    if (campo.tipo === 'firma' && rc.archivoUrl) {
+      if (espacioDisponible() < 80) nuevaPagina(false);
+      ctx.page.drawText(campo.etiqueta, {
+        x: NATIVO_MARGIN, y: ctx.y, size: 9, font: fontBold, color: NATIVO_GRAY_TEXT,
+      });
+      ctx.y -= 14;
+      try {
+        const imgResp = await axios.get(rc.archivoUrl, { responseType: 'arraybuffer' });
+        const pngImage = await ctx.pdfDoc.embedPng(imgResp.data);
+        const dims = pngImage.scaleToFit(150, 60);
+        ctx.page.drawImage(pngImage, { x: NATIVO_MARGIN, y: ctx.y - dims.height, width: dims.width, height: dims.height });
+        ctx.y -= dims.height + 15;
+      } catch (imgErr) {
+        console.warn(`[pdfService] generarPdfNativo: firma fallo campoId=${campo.id}:`, imgErr.message);
+        ctx.y -= 15;
+      }
+      continue;
+    }
+
+    if (campo.tipo === 'grilla' && rc.valor) {
+      dibujarGrillaNativa(ctx, { campo, rc, fontRegular, fontBold, nuevaPagina, espacioDisponible });
+      continue;
+    }
 
     const valorTexto = rc.valor || 'Sin respuesta';
     const lineas = wrapTextoNativo(fontRegular, 11, valorTexto, NATIVO_CONTENT_W);
