@@ -1,6 +1,36 @@
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const axios = require('axios');
 const { descargarBuffer: cloudinaryDescargar } = require('../config/cloudinary');
+const fs = require('fs');
+const path = require('path');
+
+const NATIVO_LOGO_PATH = path.join(__dirname, '../assets/logo-blanco.png');
+const NATIVO_PAGE_W = 612;
+const NATIVO_PAGE_H = 792;
+const NATIVO_MARGIN = 50;
+const NATIVO_HEADER_H = 70;
+const NATIVO_CONTENT_W = NATIVO_PAGE_W - NATIVO_MARGIN * 2;
+const NATIVO_NAVY = rgb(0.106, 0.137, 0.251);
+const NATIVO_GRAY_TEXT = rgb(0.4, 0.4, 0.4);
+const NATIVO_GRAY_LINE = rgb(0.8, 0.8, 0.8);
+const NATIVO_BLACK = rgb(0.1, 0.1, 0.1);
+
+function wrapTextoNativo(font, size, texto, maxWidth) {
+  const palabras = String(texto).split(/\s+/);
+  const lineas = [];
+  let actual = '';
+  for (const palabra of palabras) {
+    const prueba = actual ? `${actual} ${palabra}` : palabra;
+    if (actual && font.widthOfTextAtSize(prueba, size) > maxWidth) {
+      lineas.push(actual);
+      actual = palabra;
+    } else {
+      actual = prueba;
+    }
+  }
+  if (actual) lineas.push(actual);
+  return lineas;
+}
 
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -296,4 +326,114 @@ async function llenarPDF(plantilla, mapeos, respuestaCampos, campos = []) {
   return Buffer.from(await pdfDoc.save());
 }
 
-module.exports = { llenarPDF };
+async function generarPdfNativo({ formulario, respuesta, respuestaCampos, campos, secciones = [], nombreRespondente }) {
+  const pdfDoc = await PDFDocument.create();
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const logoImage = await pdfDoc.embedPng(fs.readFileSync(NATIVO_LOGO_PATH));
+
+  const folio = `FORM-${String(respuesta.id).padStart(6, '0')}`;
+  const fechaTexto = new Date(respuesta.createdAt || Date.now()).toLocaleString('es-CO', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+  const nombreMostrado = nombreRespondente || 'Anónimo';
+
+  const ctx = { pdfDoc, page: null, y: 0 };
+
+  function espacioDisponible() {
+    return ctx.y - NATIVO_MARGIN - 40;
+  }
+
+  function nuevaPagina(esPrimera) {
+    ctx.page = ctx.pdfDoc.addPage([NATIVO_PAGE_W, NATIVO_PAGE_H]);
+    if (esPrimera) {
+      ctx.page.drawRectangle({
+        x: 0, y: NATIVO_PAGE_H - NATIVO_HEADER_H,
+        width: NATIVO_PAGE_W, height: NATIVO_HEADER_H, color: NATIVO_NAVY,
+      });
+      const logoDims = logoImage.scaleToFit(40, 40);
+      ctx.page.drawImage(logoImage, {
+        x: NATIVO_MARGIN,
+        y: NATIVO_PAGE_H - NATIVO_HEADER_H + (NATIVO_HEADER_H - logoDims.height) / 2,
+        width: logoDims.width,
+        height: logoDims.height,
+      });
+      const marcaTexto = 'Soporte TI · ISTHO S.A.S.';
+      const marcaWidth = fontBold.widthOfTextAtSize(marcaTexto, 12);
+      ctx.page.drawText(marcaTexto, {
+        x: NATIVO_PAGE_W - NATIVO_MARGIN - marcaWidth,
+        y: NATIVO_PAGE_H - NATIVO_HEADER_H / 2 - 4,
+        size: 12, font: fontBold, color: rgb(1, 1, 1),
+      });
+
+      ctx.y = NATIVO_PAGE_H - NATIVO_HEADER_H - 30;
+      ctx.page.drawText(formulario.nombre, {
+        x: NATIVO_MARGIN, y: ctx.y, size: 16, font: fontBold, color: NATIVO_BLACK,
+      });
+      ctx.y -= 20;
+      const metaTexto = `Folio: ${folio}    Fecha: ${fechaTexto}    Respondido por: ${nombreMostrado}`;
+      ctx.page.drawText(metaTexto, {
+        x: NATIVO_MARGIN, y: ctx.y, size: 10, font: fontRegular, color: NATIVO_GRAY_TEXT,
+      });
+      ctx.y -= 25;
+    } else {
+      ctx.y = NATIVO_PAGE_H - NATIVO_MARGIN;
+      const encabezado = `${formulario.nombre}  ·  ${folio}`;
+      ctx.page.drawText(encabezado, {
+        x: NATIVO_MARGIN, y: ctx.y, size: 10, font: fontBold, color: NATIVO_GRAY_TEXT,
+      });
+      ctx.y -= 20;
+    }
+  }
+
+  nuevaPagina(true);
+
+  const campoMap = new Map(respuestaCampos.map((rc) => [rc.campoId, rc]));
+  const camposOrdenados = campos
+    .filter((c) => campoMap.has(c.id))
+    .sort((a, b) => a.orden - b.orden);
+
+  for (const campo of camposOrdenados) {
+    const rc = campoMap.get(campo.id);
+
+    const valorTexto = rc.valor || 'Sin respuesta';
+    const lineas = wrapTextoNativo(fontRegular, 11, valorTexto, NATIVO_CONTENT_W);
+    const altoNecesario = 14 + lineas.length * 14 + 12;
+    if (espacioDisponible() < altoNecesario) nuevaPagina(false);
+
+    ctx.page.drawText(campo.etiqueta, {
+      x: NATIVO_MARGIN, y: ctx.y, size: 9, font: fontBold, color: NATIVO_GRAY_TEXT,
+    });
+    ctx.y -= 14;
+    for (const linea of lineas) {
+      ctx.page.drawText(linea, {
+        x: NATIVO_MARGIN, y: ctx.y, size: 11, font: fontRegular, color: NATIVO_BLACK,
+      });
+      ctx.y -= 14;
+    }
+    ctx.y -= 12;
+  }
+
+  const paginas = ctx.pdfDoc.getPages();
+  const totalPaginas = paginas.length;
+  paginas.forEach((p, idx) => {
+    p.drawLine({
+      start: { x: NATIVO_MARGIN, y: NATIVO_MARGIN },
+      end: { x: NATIVO_PAGE_W - NATIVO_MARGIN, y: NATIVO_MARGIN },
+      thickness: 0.5, color: NATIVO_GRAY_LINE,
+    });
+    p.drawText('Documento generado automáticamente por Sistema de Soporte TI — ISTHO S.A.S.', {
+      x: NATIVO_MARGIN, y: NATIVO_MARGIN - 14, size: 8, font: fontRegular, color: NATIVO_GRAY_TEXT,
+    });
+    const paginaTexto = `Página ${idx + 1} de ${totalPaginas}`;
+    const paginaWidth = fontRegular.widthOfTextAtSize(paginaTexto, 8);
+    p.drawText(paginaTexto, {
+      x: NATIVO_PAGE_W - NATIVO_MARGIN - paginaWidth, y: NATIVO_MARGIN - 14,
+      size: 8, font: fontRegular, color: NATIVO_GRAY_TEXT,
+    });
+  });
+
+  return Buffer.from(await ctx.pdfDoc.save());
+}
+
+module.exports = { llenarPDF, generarPdfNativo };
