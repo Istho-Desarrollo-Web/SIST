@@ -354,7 +354,7 @@ async function listarRespuestasFormulario(req, res, next) {
     }
 
     const include = [
-      { model: FormularioPdfGenerado, as: 'pdf', attributes: ['id', 'urlCloudinary'] },
+      { model: FormularioPdfGenerado, as: 'pdf', attributes: ['id', 'urlCloudinary', 'tipo'] },
       { model: Usuario, as: 'respondedor', attributes: ['id', 'nombre'] },
     ];
 
@@ -397,7 +397,7 @@ async function obtenerDetalleRespuesta(req, res, next) {
   try {
     const respuesta = await FormularioRespuesta.findByPk(req.params.id, {
       include: [
-        { model: FormularioPdfGenerado, as: 'pdf', attributes: ['id', 'urlCloudinary'] },
+        { model: FormularioPdfGenerado, as: 'pdf', attributes: ['id', 'urlCloudinary', 'tipo'] },
         { model: Usuario, as: 'respondedor', attributes: ['id', 'nombre'] },
       ],
     });
