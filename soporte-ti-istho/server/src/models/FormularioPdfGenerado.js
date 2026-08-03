@@ -12,8 +12,13 @@ FormularioPdfGenerado.init({
   },
   plantillaId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     field: 'plantilla_id',
+  },
+  tipo: {
+    type: DataTypes.ENUM('plantilla', 'nativo'),
+    allowNull: false,
+    defaultValue: 'plantilla',
   },
   urlCloudinary: {
     type: DataTypes.STRING(500),
