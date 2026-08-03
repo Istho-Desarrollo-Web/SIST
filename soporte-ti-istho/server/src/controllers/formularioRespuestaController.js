@@ -8,7 +8,7 @@ const {
   FormularioPdfGenerado, Usuario, Solicitud,
 } = require('../models');
 const { registrarAuditoria } = require('../services/auditoriaService');
-const { llenarPDF } = require('../services/pdfService');
+const { llenarPDF, generarPdfNativo } = require('../services/pdfService');
 const { ROLES } = require('../utils/constants');
 const { Op } = require('sequelize');
 
@@ -162,11 +162,33 @@ async function responder(req, res, next) {
         pdfGenerado = await FormularioPdfGenerado.create({
           respuestaId: respuesta.id,
           plantillaId: plantilla.id,
+          tipo: 'plantilla',
           urlCloudinary: uploadResult.secure_url,
           publicId: uploadResult.public_id,
         });
       } catch (pdfErr) {
         console.error('Error generando PDF:', pdfErr.message);
+      }
+    } else {
+      try {
+        const nombreParaPdf = req.user?.nombre || respuesta.nombreRespondente || null;
+        const pdfBuffer = await generarPdfNativo({
+          formulario, respuesta, respuestaCampos,
+          campos: formulario.campos, secciones: formulario.secciones,
+          nombreRespondente: nombreParaPdf,
+        });
+        const nombreBase = formulario.nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        const publicIdBase = `sist-formularios-generados/${nombreBase}_${respuesta.id}`;
+        const uploadResult = await _uploadBuffer(pdfBuffer, publicIdBase, req);
+        pdfGenerado = await FormularioPdfGenerado.create({
+          respuestaId: respuesta.id,
+          plantillaId: null,
+          tipo: 'nativo',
+          urlCloudinary: uploadResult.secure_url,
+          publicId: uploadResult.public_id,
+        });
+      } catch (pdfErr) {
+        console.error('Error generando PDF nativo:', pdfErr.message);
       }
     }
 
