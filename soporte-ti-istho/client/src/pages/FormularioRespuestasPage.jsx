@@ -16,6 +16,9 @@ function formatFecha(val) {
   return isNaN(d) ? '—' : d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+const PDF_TIPO_LABEL = { plantilla: 'Plantilla', nativo: 'Generado' };
+const PDF_TIPO_VARIANT = { plantilla: 'default', nativo: 'info' };
+
 export function FormularioRespuestasPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -221,16 +224,21 @@ export function FormularioRespuestasPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
                         {r.pdf?.urlCloudinary && (
-                          <button
-                            onClick={() => descargar(r)}
-                            disabled={descargando === r.id}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-navy-800 border border-slate-200 dark:border-navy-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-700 transition-colors disabled:opacity-50"
-                          >
-                            {descargando === r.id
-                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              : <Download className="w-3.5 h-3.5" />}
-                            PDF
-                          </button>
+                          <>
+                            <Badge variant={PDF_TIPO_VARIANT[r.pdf.tipo] ?? 'default'}>
+                              {PDF_TIPO_LABEL[r.pdf.tipo] ?? 'PDF'}
+                            </Badge>
+                            <button
+                              onClick={() => descargar(r)}
+                              disabled={descargando === r.id}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-navy-800 border border-slate-200 dark:border-navy-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-700 transition-colors disabled:opacity-50"
+                            >
+                              {descargando === r.id
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Download className="w-3.5 h-3.5" />}
+                              PDF
+                            </button>
+                          </>
                         )}
                         <button
                           onClick={() => setDetalleId(r.id)}
