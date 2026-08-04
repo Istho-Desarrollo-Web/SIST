@@ -83,10 +83,11 @@ export function DashboardPage() {
   const ESTADOS_ABIERTOS = ['abierto', 'en_analisis', 'en_proceso', 'pendiente_usuario', 'pendiente_externo'];
   const breakdownEstados = estados.map(e => ({ label: ESTADOS_LABEL[e.estado] || e.estado, value: e.total }));
   const breakdownAbiertos = estados.filter(e => ESTADOS_ABIERTOS.includes(e.estado)).map(e => ({ label: ESTADOS_LABEL[e.estado] || e.estado, value: e.total }));
+  const totalAbiertos = breakdownAbiertos.reduce((sum, b) => sum + b.value, 0);
 
   const kpis = [
     { key: 'total', label: 'Total Tickets', value: resumen?.total ?? '-', meta: null, breakdown: breakdownEstados },
-    { key: 'abiertas', label: 'Solicitudes abiertas', value: resumen?.abiertos ?? '-', meta: `${resumen?.enProceso ?? 0} en proceso`, breakdown: breakdownAbiertos },
+    { key: 'abiertas', label: 'Solicitudes abiertas', value: totalAbiertos, meta: `${resumen?.enProceso ?? 0} en proceso`, breakdown: breakdownAbiertos },
     { key: 'vencidos', label: 'Vencidos', value: resumen?.vencidos ?? '-', meta: null, breakdown: null },
     { key: 'sla', label: 'Cumplimiento SLA', value: resumen ? `${resumen.porcentajeCumplimiento ?? 0}%` : '-', meta: `${resumen?.resueltos ?? 0} resueltos`, breakdown: null },
   ];
