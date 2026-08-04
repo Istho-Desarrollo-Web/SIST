@@ -71,6 +71,8 @@ export function EmpleadosPage() {
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const hayBusquedaActiva = !!search;
+  const limpiarBusqueda = () => setSearch('');
   const [modal, setModal] = useState(null);
   const [importarOpen, setImportarOpen] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
@@ -145,7 +147,14 @@ export function EmpleadosPage() {
         ) : empleados.length === 0 ? (
           <div className="cx-empty" style={{ border: 'none', padding: '44px 24px' }}>
             <div className="cx-empty-icon"><Users size={24} /></div>
-            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, margin: '6px 0 0' }}>No hay empleados</p>
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, margin: '6px 0 0' }}>
+              {hayBusquedaActiva ? 'Sin coincidencias' : 'No hay empleados'}
+            </p>
+            {hayBusquedaActiva && (
+              <button type="button" className="cx-btn cx-btn-ghost" style={{ marginTop: 10 }} onClick={limpiarBusqueda}>
+                Limpiar búsqueda
+              </button>
+            )}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>

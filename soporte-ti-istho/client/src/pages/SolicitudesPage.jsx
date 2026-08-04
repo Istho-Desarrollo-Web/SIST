@@ -37,6 +37,11 @@ export function SolicitudesPage() {
   const [loadingTecnico, setLoadingTecnico] = useState(false);
   const searchTimeout = useRef(null);
   const [searchInput, setSearchInput] = useState(filters.search);
+  const hayFiltrosActivos = !!(filters.search || filters.estado || filters.prioridad);
+  const limpiarFiltros = () => {
+    setSearchInput('');
+    setFilters({ estado: '', prioridad: '', search: '' });
+  };
 
   const cargar = useCallback(async (page = 1) => {
     setLoading(true);
@@ -181,7 +186,14 @@ export function SolicitudesPage() {
         ) : solicitudes.length === 0 ? (
           <div className="cx-empty" style={{ border: 'none', padding: '44px 24px' }}>
             <div className="cx-empty-icon"><Ticket size={24} /></div>
-            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, margin: '6px 0 0' }}>No hay solicitudes</p>
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, margin: '6px 0 0' }}>
+              {hayFiltrosActivos ? 'Sin coincidencias' : 'No hay solicitudes'}
+            </p>
+            {hayFiltrosActivos && (
+              <button type="button" className="cx-btn cx-btn-ghost" style={{ marginTop: 10 }} onClick={limpiarFiltros}>
+                Limpiar filtros
+              </button>
+            )}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
