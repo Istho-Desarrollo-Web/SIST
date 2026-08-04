@@ -36,6 +36,7 @@ export function DashboardPage() {
   const [actividadPagination, setActividadPagination] = useState({ totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [estadoActivo, setEstadoActivo] = useState(null);
+  const [kpiAbierto, setKpiAbierto] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -74,17 +75,22 @@ export function DashboardPage() {
     }
   }, []);
 
-  const kpis = [
-    { label: 'Total Tickets', value: resumen?.total ?? '-', meta: null },
-    { label: 'Solicitudes abiertas', value: resumen?.abiertos ?? '-', meta: `${resumen?.enProceso ?? 0} en proceso` },
-    { label: 'Vencidos', value: resumen?.vencidos ?? '-', meta: null },
-    { label: 'Cumplimiento SLA', value: resumen ? `${resumen.porcentajeCumplimiento ?? 0}%` : '-', meta: `${resumen?.resueltos ?? 0} resueltos` },
-  ];
-
   const dias = (tendencias?.porDia || []).slice(-7);
   const maxDia = Math.max(1, ...dias.map(d => d.total));
 
   const estados = (tendencias?.porEstado || []).filter(e => e.total > 0);
+
+  const ESTADOS_ABIERTOS = ['abierto', 'en_analisis', 'en_proceso', 'pendiente_usuario', 'pendiente_externo'];
+  const breakdownEstados = estados.map(e => ({ label: ESTADOS_LABEL[e.estado] || e.estado, value: e.total }));
+  const breakdownAbiertos = estados.filter(e => ESTADOS_ABIERTOS.includes(e.estado)).map(e => ({ label: ESTADOS_LABEL[e.estado] || e.estado, value: e.total }));
+
+  const kpis = [
+    { key: 'total', label: 'Total Tickets', value: resumen?.total ?? '-', meta: null, breakdown: breakdownEstados },
+    { key: 'abiertas', label: 'Solicitudes abiertas', value: resumen?.abiertos ?? '-', meta: `${resumen?.enProceso ?? 0} en proceso`, breakdown: breakdownAbiertos },
+    { key: 'vencidos', label: 'Vencidos', value: resumen?.vencidos ?? '-', meta: null, breakdown: null },
+    { key: 'sla', label: 'Cumplimiento SLA', value: resumen ? `${resumen.porcentajeCumplimiento ?? 0}%` : '-', meta: `${resumen?.resueltos ?? 0} resueltos`, breakdown: null },
+  ];
+
   const donutTotal = estados.reduce((a, e) => a + e.total, 0);
   const donutSegments = estados.reduce((acc, e) => {
     const pct = donutTotal > 0 ? Math.round((e.total / donutTotal) * 100) : 0;
@@ -110,13 +116,32 @@ export function DashboardPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 14, marginBottom: 20 }}>
-        {kpis.map(k => (
-          <div key={k.label} className="cx-card cx-elev-sm" style={{ padding: 18 }}>
-            <p className="cx-card-kicker" style={{ margin: 0 }}>{k.label}</p>
-            {loading ? <div className="cx-skeleton" style={{ height: 26, width: '50%', marginTop: 6 }} /> : <p className="cx-card-kpi-value">{k.value}</p>}
-            {k.meta && !loading && <p className="cx-card-meta">{k.meta}</p>}
-          </div>
-        ))}
+        {kpis.map(k => {
+          const expandible = !!k.breakdown && k.breakdown.length > 0;
+          const abierto = kpiAbierto === k.key;
+          return (
+            <div
+              key={k.key}
+              className="cx-card cx-elev-sm"
+              style={{ padding: 18, cursor: expandible ? 'pointer' : 'default' }}
+              onClick={expandible ? () => setKpiAbierto(abierto ? null : k.key) : undefined}
+            >
+              <p className="cx-card-kicker" style={{ margin: 0 }}>{k.label}</p>
+              {loading ? <div className="cx-skeleton" style={{ height: 26, width: '50%', marginTop: 6 }} /> : <p className="cx-card-kpi-value">{k.value}</p>}
+              {k.meta && !loading && <p className="cx-card-meta">{k.meta}</p>}
+              {expandible && abierto && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {k.breakdown.map(b => (
+                    <div key={b.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5 }}>
+                      <span className="text-muted">{b.label}</span>
+                      <strong>{b.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 16, marginBottom: 16 }}>
