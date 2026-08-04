@@ -65,54 +65,38 @@ export function Select({ value, onChange, options = [], placeholder = 'Seleccion
   const selected = options.find(o => String(o.value) === String(value));
 
   const dropdown = open ? (
-    <div
-      ref={dropRef}
-      style={dropStyle}
-      className="bg-white dark:bg-navy-800 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 overflow-hidden"
-    >
-      <div className="max-h-56 overflow-y-auto py-1">
-        {options.map(opt => {
-          const isActive = String(opt.value) === String(value);
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={`w-full px-3 py-2 text-sm text-left flex items-center justify-between gap-3 transition-colors
-                ${isActive
-                  ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-semibold'
-                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-700'}`}
-            >
-              <span>{opt.label}</span>
-              {isActive && <Check size={13} className="text-orange-500 shrink-0" />}
-            </button>
-          );
-        })}
-      </div>
+    <div ref={dropRef} style={dropStyle} className="cx-select-panel">
+      {options.map(opt => {
+        const isActive = String(opt.value) === String(value);
+        return (
+          <div
+            key={opt.value}
+            onClick={() => { onChange(opt.value); setOpen(false); }}
+            className={`cx-select-option${isActive ? ' selected' : ''}`}
+          >
+            <span>{opt.label}</span>
+            {isActive && <Check size={13} style={{ flex: 'none' }} />}
+          </div>
+        );
+      })}
     </div>
   ) : null;
 
   return (
-    <div ref={ref} className="relative">
-      {label && (
-        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">
-          {label}
-        </label>
-      )}
+    <div ref={ref} style={{ position: 'relative' }}>
+      {label && <label className="cx-label" style={{ display: 'block', marginBottom: 4 }}>{label}</label>}
 
       <button
         ref={btnRef}
         type="button"
         onClick={handleToggle}
-        className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 flex items-center justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-colors cursor-pointer"
+        className={`cx-select-trigger${open ? ' open' : ''}`}
+        style={{ width: '100%' }}
       >
-        <span className={`truncate ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: selected ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
           {selected?.label ?? placeholder}
         </span>
-        <ChevronDown
-          size={14}
-          className={`shrink-0 text-slate-400 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
-        />
+        <ChevronDown size={14} />
       </button>
 
       {createPortal(dropdown, document.body)}

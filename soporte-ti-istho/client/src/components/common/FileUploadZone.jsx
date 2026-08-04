@@ -12,11 +12,11 @@ function isAccepted(file, accept) {
 
 function getFileIcon(name) {
   const ext = name.split('.').pop().toLowerCase();
-  if (['jpg','jpeg','png','gif','webp'].includes(ext)) return { Icon: ImageIcon, color: 'text-blue-500' };
-  if (['mp4','webm','avi','mov'].includes(ext))        return { Icon: Film,      color: 'text-purple-500' };
-  if (['mp3','wav','ogg','m4a'].includes(ext))         return { Icon: Music,     color: 'text-pink-500' };
-  if (['xls','xlsx'].includes(ext))                   return { Icon: FileSpreadsheet, color: 'text-cgreen-600' };
-  return { Icon: FileText, color: 'text-orange-500' };
+  if (['jpg','jpeg','png','gif','webp'].includes(ext)) return { Icon: ImageIcon, color: 'var(--color-info)' };
+  if (['mp4','webm','avi','mov'].includes(ext))        return { Icon: Film,      color: 'var(--color-accent)' };
+  if (['mp3','wav','ogg','m4a'].includes(ext))         return { Icon: Music,     color: 'var(--color-accent)' };
+  if (['xls','xlsx'].includes(ext))                   return { Icon: FileSpreadsheet, color: 'var(--color-success)' };
+  return { Icon: FileText, color: 'var(--color-accent)' };
 }
 
 export function FileUploadZone({ files, onChange, accept }) {
@@ -47,53 +47,51 @@ export function FileUploadZone({ files, onChange, accept }) {
   const full = files.length >= MAX_FILES;
 
   return (
-    <div className="space-y-2">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div
         onDragOver={e => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         onClick={() => !full && inputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors
-          ${full ? 'opacity-50 cursor-not-allowed border-slate-200 dark:border-navy-600'
-            : dragging ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/10 cursor-pointer'
-            : 'border-slate-300 dark:border-navy-500 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/10 cursor-pointer'}`}
+        style={{
+          border: `1px dashed ${dragging ? 'var(--color-accent)' : 'var(--color-border-strong)'}`,
+          borderRadius: 'var(--radius-md)', padding: 16, textAlign: 'center',
+          opacity: full ? 0.5 : 1, cursor: full ? 'not-allowed' : 'pointer',
+          background: dragging ? 'var(--accent-100)' : 'transparent',
+        }}
       >
         <input
           ref={inputRef}
           type="file"
           multiple
           accept={inputAccept}
-          className="hidden"
+          style={{ display: 'none' }}
           onChange={e => { addFiles(Array.from(e.target.files || [])); e.target.value = ''; }}
         />
-        <Upload size={20} className="mx-auto text-slate-400 mb-1" />
-        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+        <Upload size={20} color="var(--color-text-muted)" style={{ margin: '0 auto 4px' }} />
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 600 }}>
           {full ? 'Límite de archivos alcanzado' : 'Clic o arrastra archivos aquí'}
         </p>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-muted" style={{ margin: '2px 0 0', fontSize: 12 }}>
           Máx. {MAX_FILES} archivos · 10 MB c/u
         </p>
-        <p className="text-xs text-slate-400">
+        <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>
           {accept ? accept.toUpperCase().replace(/\./g, '').split(',').join(', ') : 'Word, Excel, PPT, PDF, Imagen, Video, Audio'}
         </p>
       </div>
 
       {files.length > 0 && (
-        <div className="space-y-1.5">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {files.map((f, i) => {
             const { Icon, color } = getFileIcon(f.name);
             return (
-              <div key={i} className="flex items-center gap-2.5 px-3 py-2 bg-slate-50 dark:bg-navy-800 rounded-lg border border-slate-200 dark:border-navy-600">
-                <Icon size={16} className={color} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate">{f.name}</p>
-                  <p className="text-xs text-slate-400">{(f.size / 1024).toFixed(0)} KB</p>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
+                <Icon size={16} color={color} style={{ flex: 'none' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</p>
+                  <p className="text-muted" style={{ margin: 0, fontSize: 11 }}>{(f.size / 1024).toFixed(0)} KB</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => remove(i)}
-                  className="p-1 rounded hover:bg-slate-200 dark:hover:bg-navy-600 text-slate-400 hover:text-red-500 transition-colors shrink-0"
-                >
+                <button type="button" onClick={() => remove(i)} className="cx-btn cx-btn-ghost cx-btn-icon" style={{ padding: 4, flex: 'none' }}>
                   <X size={13} />
                 </button>
               </div>

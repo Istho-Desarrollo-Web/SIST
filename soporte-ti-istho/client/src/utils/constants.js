@@ -31,19 +31,19 @@ export const TIPOS_SOLICITUD_LABEL = {
 };
 
 export const PRIORIDAD_COLORS = {
-  critica: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  alta: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  media: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  baja: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  critica: 'cx-tag-danger',
+  alta: 'cx-tag-warning',
+  media: 'cx-tag-info',
+  baja: 'cx-tag-neutral',
 };
 
 export const ESTADO_COLORS = {
-  abierto:           'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  en_analisis:       'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
-  en_proceso:        'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  pendiente_usuario: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  pendiente_externo: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
-  resuelto:          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  cerrado:           'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300',
-  rechazado:         'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  abierto:           'cx-tag-info',
+  en_analisis:       'cx-tag-outline',
+  en_proceso:        'cx-tag-warning',
+  pendiente_usuario: 'cx-tag-outline',
+  pendiente_externo: 'cx-tag-outline',
+  resuelto:          'cx-tag-success',
+  cerrado:           'cx-tag-neutral',
+  rechazado:         'cx-tag-danger',
 };

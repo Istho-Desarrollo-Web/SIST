@@ -1,22 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Ticket, AlertTriangle, Clock, TrendingUp, Activity, PlusCircle, RefreshCw } from 'lucide-react';
-import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { LayoutDashboard, Activity, PlusCircle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { dashboardService } from '../services/dashboardService';
-import { MetricCard } from '../components/dashboard/MetricCard';
-import { Card } from '../components/common/Card';
-import { Skeleton } from '../components/common/Skeleton';
-import { Pagination } from '../components/common/Pagination';
 import { ESTADOS_LABEL } from '../utils/constants';
 import { formatRelativo } from '../utils/formatters';
-import { toast } from 'sonner';
 
-const CHART_COLORS = ['#3B82F6', '#F59E0B', '#8B5CF6', '#4C8C2B', '#64748B', '#DC2626'];
+const ESTADO_COLOR = {
+  abierto: 'var(--color-info)',
+  en_analisis: 'var(--color-info)',
+  en_proceso: 'var(--color-warning)',
+  pendiente_usuario: 'var(--neutral-500)',
+  pendiente_externo: 'var(--neutral-500)',
+  resuelto: 'var(--color-success)',
+  cerrado: 'var(--neutral-400)',
+  rechazado: 'var(--color-danger)',
+};
 const PRIORIDAD_LABEL = { critica: 'Crítica', alta: 'Alta', media: 'Media', baja: 'Baja' };
+const DONUT_C = 2 * Math.PI * 50;
+
+function SkeletonRow() {
+  return <div className="cx-skeleton" style={{ height: 12, width: '75%' }} />;
+}
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [resumen, setResumen] = useState(null);
   const [tecnicos, setTecnicos] = useState([]);
   const [tendencias, setTendencias] = useState(null);
@@ -25,6 +35,7 @@ export function DashboardPage() {
   const [actividadPage, setActividadPage] = useState(1);
   const [actividadPagination, setActividadPagination] = useState({ totalPages: 1 });
   const [loading, setLoading] = useState(true);
+  const [estadoActivo, setEstadoActivo] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -32,7 +43,7 @@ export function DashboardPage() {
       dashboardService.porTecnico(),
       dashboardService.tendencias(),
       dashboardService.metricasSLA(),
-      dashboardService.actividadReciente({ page: 1, limit: 10 }),
+      dashboardService.actividadReciente({ page: 1, limit: 5 }),
     ])
       .then(([r, t, tr, sla, act]) => {
         setResumen(r.data.data);
@@ -41,8 +52,8 @@ export function DashboardPage() {
         const raw = sla.data.data || [];
         setSlaMetrics(raw.map(item => ({
           prioridad: PRIORIDAD_LABEL[item.prioridad] || item.prioridad,
-          Cumplidos: item.cumplidos,
-          Vencidos: (item.total || 0) - (item.cumplidos || 0),
+          cumplidos: item.cumplidos || 0,
+          total: item.total || 0,
           pct: item.total > 0 ? Math.round((item.cumplidos / item.total) * 100) : 100,
         })));
         setActividad(act.data.data || []);
@@ -54,7 +65,7 @@ export function DashboardPage() {
 
   const cargarActividad = useCallback(async (page) => {
     try {
-      const res = await dashboardService.actividadReciente({ page, limit: 10 });
+      const res = await dashboardService.actividadReciente({ page, limit: 5 });
       setActividad(res.data.data || []);
       setActividadPagination(res.data.pagination || { totalPages: 1 });
       setActividadPage(page);
@@ -63,226 +74,218 @@ export function DashboardPage() {
     }
   }, []);
 
+  const kpis = [
+    { label: 'Total Tickets', value: resumen?.total ?? '-', meta: null },
+    { label: 'Solicitudes abiertas', value: resumen?.abiertos ?? '-', meta: `${resumen?.enProceso ?? 0} en proceso` },
+    { label: 'Vencidos', value: resumen?.vencidos ?? '-', meta: null },
+    { label: 'Cumplimiento SLA', value: resumen ? `${resumen.porcentajeCumplimiento ?? 0}%` : '-', meta: `${resumen?.resueltos ?? 0} resueltos` },
+  ];
+
+  const dias = (tendencias?.porDia || []).slice(-7);
+  const maxDia = Math.max(1, ...dias.map(d => d.total));
+
+  const estados = (tendencias?.porEstado || []).filter(e => e.total > 0);
+  const donutTotal = estados.reduce((a, e) => a + e.total, 0);
+  const donutSegments = estados.reduce((acc, e) => {
+    const pct = donutTotal > 0 ? Math.round((e.total / donutTotal) * 100) : 0;
+    const arcLen = donutTotal > 0 ? (e.total / donutTotal) * DONUT_C : 0;
+    const accLen = acc.length ? acc[acc.length - 1].accLen + acc[acc.length - 1].arcLen : 0;
+    acc.push({ ...e, pct, arcLen, accLen, dasharray: `${arcLen.toFixed(2)} ${DONUT_C}`, dashoffset: -accLen, color: ESTADO_COLOR[e.estado] || 'var(--neutral-500)' });
+    return acc;
+  }, []);
+  const activeEstado = estados.find(e => e.estado === estadoActivo);
+  const donutCenterValue = activeEstado ? activeEstado.total : donutTotal;
+  const donutCenterLabel = activeEstado ? (ESTADOS_LABEL[activeEstado.estado] || activeEstado.estado) : 'tickets';
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-navy-500 dark:text-white">Dashboard</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Resumen del sistema de soporte TI</p>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22, paddingBottom: 18, borderBottom: '1px solid var(--color-border)' }}>
+        <span style={{ width: 46, height: 46, borderRadius: 'var(--radius-md)', background: 'var(--color-accent-subtle-bg)', color: 'var(--color-accent-subtle-text)', display: 'grid', placeItems: 'center', flex: 'none' }}>
+          <LayoutDashboard size={21} />
+        </span>
+        <div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 23, margin: '0 0 2px', letterSpacing: '-0.01em' }}>Dashboard</h1>
+          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>Resumen del sistema de soporte TI</p>
+        </div>
       </div>
 
-      {/* Métricas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 sm:h-28" />)
-        ) : (
-          <>
-            <MetricCard title="Total Tickets" value={resumen?.total} icon={Ticket} color="navy" />
-            <MetricCard title="Abiertos" value={resumen?.abiertos} icon={Clock} color="amber" subtitle={`${resumen?.enProceso ?? 0} en proceso`} />
-            <MetricCard title="Vencidos" value={resumen?.vencidos} icon={AlertTriangle} color="red" />
-            <MetricCard title="Cumpl. SLA" value={`${resumen?.porcentajeCumplimiento ?? 0}%`} icon={TrendingUp} color="green" subtitle={`${resumen?.resueltos ?? 0} resueltos`} />
-          </>
-        )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 14, marginBottom: 20 }}>
+        {kpis.map(k => (
+          <div key={k.label} className="cx-card cx-elev-sm" style={{ padding: 18 }}>
+            <p className="cx-card-kicker" style={{ margin: 0 }}>{k.label}</p>
+            {loading ? <div className="cx-skeleton" style={{ height: 26, width: '50%', marginTop: 6 }} /> : <p className="cx-card-kpi-value">{k.value}</p>}
+            {k.meta && !loading && <p className="cx-card-meta">{k.meta}</p>}
+          </div>
+        ))}
       </div>
 
-      {/* Gráficos */}
-      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Tendencia 30 días */}
-        <Card className="p-4 sm:p-5">
-          <h3 className="font-semibold text-navy-500 dark:text-white mb-4">Tickets últimos 30 días</h3>
-          {loading ? <Skeleton className="h-48" /> : (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={tendencias?.porDia || []}>
-                <defs>
-                  <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#E8531E" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#E8531E" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-navy-600" />
-                <XAxis dataKey="fecha" tick={{ fontSize: 10 }} tickFormatter={v => v?.slice(5)} />
-                <YAxis tick={{ fontSize: 10 }} width={24} />
-                <Tooltip />
-                <Area type="monotone" dataKey="total" stroke="#E8531E" fill="url(#grad)" strokeWidth={2} name="Tickets" />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
-
-        {/* Por estado */}
-        <Card className="p-4 sm:p-5">
-          <h3 className="font-semibold text-navy-500 dark:text-white mb-4">Distribución por estado</h3>
-          {loading ? <Skeleton className="h-48" /> : (
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie data={tendencias?.porEstado || []} dataKey="total" nameKey="estado" cx="50%" cy="50%" outerRadius={60}>
-                  {(tendencias?.porEstado || []).map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(val, name) => [val, ESTADOS_LABEL[name] || name]} />
-                <Legend formatter={(val) => ESTADOS_LABEL[val] || val} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
-      </div>
-
-      {/* SLA por prioridad */}
-      <Card className="p-4 sm:p-5">
-        <h3 className="font-semibold text-navy-500 dark:text-white mb-1">Cumplimiento SLA por prioridad</h3>
-        <p className="text-xs text-slate-400 mb-4">Tickets resueltos dentro del límite vs. vencidos</p>
-        {loading ? <Skeleton className="h-44" /> : (
-          slaMetrics.length === 0 ? (
-            <p className="py-6 text-center text-slate-400 text-sm">Sin datos de SLA aún</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 16, marginBottom: 16 }}>
+        <div className="cx-card cx-elev-sm" style={{ padding: 20 }}>
+          <h3 style={{ fontSize: 14.5, margin: '0 0 16px' }}>Tickets últimos 7 días</h3>
+          {loading ? <div className="cx-skeleton" style={{ height: 120 }} /> : dias.length === 0 ? (
+            <p className="text-muted" style={{ textAlign: 'center', fontSize: 13, padding: '30px 0' }}>Sin datos de tendencia</p>
           ) : (
-            <div className="space-y-4">
-              <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={slaMetrics} barCategoryGap="30%">
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-navy-600" />
-                  <XAxis dataKey="prioridad" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 10 }} width={24} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="Cumplidos" fill="#4C8C2B" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Vencidos" fill="#DC2626" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {slaMetrics.map(item => (
-                  <div key={item.prioridad} className="bg-slate-50 dark:bg-navy-800 rounded-lg p-2.5 text-center">
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{item.prioridad}</p>
-                    <p className={`text-xl font-bold ${item.pct >= 80 ? 'text-cgreen-600 dark:text-cgreen-400' : item.pct >= 50 ? 'text-amber-500' : 'text-red-500'}`}>
-                      {item.pct}%
-                    </p>
-                    <p className="text-xs text-slate-400">{item.Cumplidos} / {item.Cumplidos + item.Vencidos}</p>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 120 }}>
+              {dias.map((d, i) => (
+                <div key={d.fecha} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
+                  <span className="text-muted" style={{ fontSize: 10.5 }}>{d.total}</span>
+                  <div
+                    title={`${d.fecha}: ${d.total} tickets`}
+                    style={{
+                      width: '100%', maxWidth: 28, borderRadius: '4px 4px 0 0', background: 'var(--color-accent)', opacity: .85,
+                      transformOrigin: 'bottom', height: Math.round((d.total / maxDia) * 88),
+                      animation: `barGrow .5s ease-out ${(i * 0.06).toFixed(2)}s both`,
+                    }}
+                  />
+                  <span className="text-muted" style={{ fontSize: 10.5 }}>{format(parseISO(d.fecha), 'EEE', { locale: es })}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="cx-card cx-elev-sm" style={{ padding: 20 }}>
+          <h3 style={{ fontSize: 14.5, margin: '0 0 16px' }}>Distribución por estado</h3>
+          {loading ? <div className="cx-skeleton" style={{ height: 120 }} /> : donutTotal === 0 ? (
+            <p className="text-muted" style={{ textAlign: 'center', fontSize: 13, padding: '30px 0' }}>Sin solicitudes registradas</p>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', width: 120, height: 120, flex: 'none' }}>
+                <svg viewBox="0 0 120 120" width={120} height={120} style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx={60} cy={60} r={50} fill="none" stroke="var(--color-border)" strokeWidth={16} opacity={.25} />
+                  {donutSegments.map((seg) => (
+                    <circle
+                      key={seg.estado} cx={60} cy={60} r={50} fill="none" stroke={seg.color}
+                      strokeWidth={estadoActivo === seg.estado ? 20 : 16}
+                      opacity={!estadoActivo || estadoActivo === seg.estado ? 1 : 0.3}
+                      strokeLinecap="butt"
+                      strokeDasharray={seg.dasharray} strokeDashoffset={seg.dashoffset}
+                      style={{ cursor: 'pointer', transition: 'stroke-width .15s ease,opacity .15s ease' }}
+                      onClick={() => setEstadoActivo(a => a === seg.estado ? null : seg.estado)}
+                    >
+                      <title>{`${ESTADOS_LABEL[seg.estado] || seg.estado}: ${seg.total} (${seg.pct}%)`}</title>
+                    </circle>
+                  ))}
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>{donutCenterValue}</span>
+                  <span className="text-muted" style={{ fontSize: 10, textTransform: 'capitalize' }}>{donutCenterLabel}</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 140 }}>
+                {estados.map(e => (
+                  <div
+                    key={e.estado}
+                    onClick={() => setEstadoActivo(a => a === e.estado ? null : e.estado)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '4px 6px', cursor: 'pointer', borderRadius: 6, background: estadoActivo === e.estado ? `color-mix(in srgb, ${ESTADO_COLOR[e.estado] || 'var(--neutral-500)'} 14%, transparent)` : 'transparent' }}
+                  >
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: ESTADO_COLOR[e.estado] || 'var(--neutral-500)', flex: 'none' }} />
+                    <span style={{ flex: 1 }}>{ESTADOS_LABEL[e.estado] || e.estado}</span>
+                    <span style={{ fontWeight: 700 }}>{e.total}</span>
                   </div>
                 ))}
               </div>
             </div>
-          )
-        )}
-      </Card>
+          )}
+        </div>
+      </div>
 
-      {/* Técnicos */}
-      <Card className="p-4 sm:p-5">
-        <h3 className="font-semibold text-navy-500 dark:text-white mb-4">Carga de trabajo por técnico</h3>
-        {loading ? <Skeleton className="h-32" /> : (
-          <>
-            {/* Tarjetas móvil */}
-            <div className="sm:hidden space-y-2">
-              {tecnicos.map(t => (
-                <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-navy-800 rounded-xl">
-                  <div className="min-w-0">
-                    <p className="font-medium text-navy-500 dark:text-white text-sm truncate">{t.nombre}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{t.especialidad || 'Sin especialidad'}</p>
-                  </div>
-                  <div className="flex gap-4 shrink-0 ml-3 text-center text-xs">
-                    <div>
-                      <p className="font-bold text-blue-600 dark:text-blue-400 text-base">{t.asignados}</p>
-                      <p className="text-slate-400">Asig.</p>
-                    </div>
-                    <div>
-                      <p className="font-bold text-cgreen-600 dark:text-cgreen-400 text-base">{t.resueltos}</p>
-                      <p className="text-slate-400">Res.</p>
-                    </div>
-                    <div>
-                      <p className={`font-bold text-base ${t.vencidos > 0 ? 'text-red-500' : 'text-slate-400 dark:text-slate-500'}`}>{t.vencidos}</p>
-                      <p className="text-slate-400">Venc.</p>
-                    </div>
-                  </div>
+      <div className="cx-card cx-elev-sm" style={{ padding: 20, marginBottom: 16 }}>
+        <h3 style={{ fontSize: 14.5, margin: '0 0 2px' }}>Cumplimiento SLA por prioridad</h3>
+        <p className="text-muted" style={{ margin: '0 0 16px', fontSize: 12 }}>Tickets resueltos dentro del límite vs. vencidos</p>
+        {loading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10 }}>
+            {[0, 1, 2, 3].map(i => <div key={i} className="cx-skeleton" style={{ height: 70 }} />)}
+          </div>
+        ) : slaMetrics.length === 0 ? (
+          <p className="text-muted" style={{ textAlign: 'center', fontSize: 13, padding: '20px 0' }}>Sin datos de SLA aún</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 10 }}>
+            {slaMetrics.map(m => {
+              const pctColor = m.pct >= 80 ? 'var(--color-success)' : m.pct >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
+              return (
+                <div key={m.prioridad} title={`${m.cumplidos} de ${m.total} tickets ${m.prioridad} dentro del SLA`} style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: 14, textAlign: 'center', cursor: 'pointer' }}>
+                  <p className="text-muted" style={{ margin: '0 0 4px', fontSize: 10.5, fontWeight: 700, letterSpacing: 'var(--tracking-wide)', textTransform: 'uppercase' }}>{m.prioridad}</p>
+                  <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: pctColor }}>{m.pct}%</p>
+                  <p className="text-muted" style={{ margin: '2px 0 0', fontSize: 11 }}>{m.cumplidos} / {m.total}</p>
                 </div>
-              ))}
-              {tecnicos.length === 0 && (
-                <p className="py-4 text-center text-slate-400 text-sm">Sin técnicos registrados</p>
-              )}
-            </div>
-
-            {/* Tabla escritorio */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-navy-600">
-                    <th className="pb-2 pr-4">Técnico</th>
-                    <th className="pb-2 pr-4">Especialidad</th>
-                    <th className="pb-2 pr-4 text-center">Asignados</th>
-                    <th className="pb-2 pr-4 text-center">Resueltos</th>
-                    <th className="pb-2 text-center">Vencidos</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-navy-600">
-                  {tecnicos.map(t => (
-                    <tr key={t.id}>
-                      <td className="py-2.5 pr-4 font-medium text-navy-500 dark:text-white">{t.nombre}</td>
-                      <td className="py-2.5 pr-4 text-slate-500 dark:text-slate-400">{t.especialidad || '-'}</td>
-                      <td className="py-2.5 pr-4 text-center">
-                        <span className="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-xs font-bold">{t.asignados}</span>
-                      </td>
-                      <td className="py-2.5 pr-4 text-center">
-                        <span className="inline-flex items-center justify-center w-7 h-7 bg-cgreen-100 text-cgreen-700 dark:bg-cgreen-900/30 dark:text-cgreen-300 rounded-full text-xs font-bold">{t.resueltos}</span>
-                      </td>
-                      <td className="py-2.5 text-center">
-                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${t.vencidos > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-slate-100 text-slate-500 dark:bg-navy-700 dark:text-slate-400'}`}>{t.vencidos}</span>
-                      </td>
-                    </tr>
-                  ))}
-                  {tecnicos.length === 0 && (
-                    <tr><td colSpan={5} className="py-4 text-center text-slate-400">Sin técnicos registrados</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
+              );
+            })}
+          </div>
         )}
-      </Card>
-      {/* Actividad reciente */}
-      <Card className="p-4 sm:p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Activity size={16} className="text-orange-500" />
-          <h3 className="font-semibold text-navy-500 dark:text-white">Actividad reciente</h3>
+      </div>
+
+      <div className="cx-card cx-elev-sm" style={{ padding: 20, marginBottom: 16 }}>
+        <h3 style={{ fontSize: 14.5, margin: '0 0 14px' }}>Carga de trabajo por técnico</h3>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{[0, 1, 2].map(i => <SkeletonRow key={i} />)}</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="cx-table" style={{ minWidth: 480 }}>
+              <thead><tr><th>Técnico</th><th>Especialidad</th><th style={{ textAlign: 'center' }}>Asignados</th><th style={{ textAlign: 'center' }}>Resueltos</th><th style={{ textAlign: 'center' }}>Vencidos</th></tr></thead>
+              <tbody>
+                {tecnicos.map(t => (
+                  <tr key={t.id} style={{ cursor: 'pointer' }} title={`Ver solicitudes de ${t.nombre}`} onClick={() => navigate('/solicitudes', { state: { search: t.nombre } })}>
+                    <td style={{ fontWeight: 600 }}>{t.nombre}</td>
+                    <td className="text-muted">{t.especialidad || '-'}</td>
+                    <td style={{ textAlign: 'center' }}><span className="cx-tag cx-tag-info">{t.asignados}</span></td>
+                    <td style={{ textAlign: 'center' }}><span className="cx-tag cx-tag-success">{t.resueltos}</span></td>
+                    <td style={{ textAlign: 'center' }}><span className={`cx-tag ${t.vencidos > 0 ? 'cx-tag-danger' : 'cx-tag-neutral'}`}>{t.vencidos}</span></td>
+                  </tr>
+                ))}
+                {tecnicos.length === 0 && <tr><td colSpan={5} className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Sin técnicos registrados</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="cx-card cx-elev-sm" style={{ padding: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <Activity size={16} color="var(--color-accent)" />
+          <h3 style={{ fontSize: 14.5, margin: 0 }}>Actividad reciente</h3>
         </div>
         {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
-          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0, 1, 2, 3, 4].map(i => <div key={i} className="cx-skeleton" style={{ height: 40 }} />)}</div>
         ) : actividad.length === 0 ? (
-          <p className="py-4 text-center text-slate-400 text-sm">Sin actividad registrada</p>
+          <p className="text-muted" style={{ textAlign: 'center', fontSize: 13, padding: '20px 0' }}>Sin actividad registrada</p>
         ) : (
           <>
-            <div className="space-y-0 divide-y divide-slate-100 dark:divide-navy-600">
+            <div>
               {actividad.map(item => {
                 const esCreacion = item.operacion === 'INSERT';
                 const esCambioEstado = item.campo === 'estado';
+                const iconBg = esCreacion ? 'var(--color-success-subtle-bg)' : 'var(--color-warning-subtle-bg)';
+                const iconColor = esCreacion ? 'var(--color-success-subtle-text)' : 'var(--color-warning-subtle-text)';
                 return (
-                  <div key={item.id} className="flex items-start gap-3 py-3">
-                    <div className={`mt-0.5 p-1.5 rounded-full shrink-0 ${esCreacion ? 'bg-cgreen-100 dark:bg-cgreen-900/30' : 'bg-orange-100 dark:bg-orange-900/30'}`}>
-                      {esCreacion
-                        ? <PlusCircle size={13} className="text-cgreen-600 dark:text-cgreen-400" />
-                        : <RefreshCw size={13} className="text-orange-500" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-snug">
-                        <span className="font-semibold text-navy-500 dark:text-white">{item.usuario}</span>
+                  <div key={item.id} style={{ display: 'flex', gap: 12, padding: '12px 10px', margin: '0 -10px', borderBottom: '1px solid var(--color-border)', borderRadius: 8 }}>
+                    <span style={{ width: 26, height: 26, borderRadius: '50%', background: iconBg, display: 'grid', placeItems: 'center', flex: 'none', marginTop: 1 }}>
+                      {esCreacion ? <PlusCircle size={13} color={iconColor} /> : <RefreshCw size={13} color={iconColor} />}
+                    </span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.4 }}>
+                        <strong>{item.usuario}</strong>
                         {esCreacion
-                          ? <> creó el ticket <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span></>
+                          ? <> creó el ticket <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)' }}>{item.solicitudNumero}</span></>
                           : esCambioEstado
-                            ? <> cambió estado de <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span> → <span className="font-semibold">{ESTADOS_LABEL[item.estadoNuevo] || item.estadoNuevo}</span></>
-                            : <> actualizó <span className="font-mono text-xs text-orange-600 dark:text-orange-400">{item.solicitudNumero}</span></>}
-                        {item.empleado && <span className="text-slate-400"> ({item.empleado})</span>}
+                            ? <> cambió estado de <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)' }}>{item.solicitudNumero}</span> → <strong>{ESTADOS_LABEL[item.estadoNuevo] || item.estadoNuevo}</strong></>
+                            : <> actualizó <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)' }}>{item.solicitudNumero}</span></>}
+                        {item.empleado && <span className="text-muted"> ({item.empleado})</span>}
                       </p>
-                      <p className="text-xs text-slate-400 mt-0.5">{formatRelativo(item.fecha)}</p>
+                      <p className="text-muted" style={{ margin: '2px 0 0', fontSize: 11.5 }}>{formatRelativo(item.fecha)}</p>
                     </div>
                   </div>
                 );
               })}
             </div>
-            <Pagination
-              page={actividadPage}
-              totalPages={actividadPagination.totalPages}
-              onChange={cargarActividad}
-            />
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 14, alignItems: 'center' }}>
+              <button type="button" className="cx-btn cx-btn-ghost cx-btn-icon" disabled={actividadPage <= 1} onClick={() => cargarActividad(actividadPage - 1)}><ChevronLeft size={14} /></button>
+              <span className="text-muted" style={{ fontSize: 12 }}>Página {actividadPage} de {actividadPagination.totalPages}</span>
+              <button type="button" className="cx-btn cx-btn-ghost cx-btn-icon" disabled={actividadPage >= actividadPagination.totalPages} onClick={() => cargarActividad(actividadPage + 1)}><ChevronRight size={14} /></button>
+            </div>
           </>
         )}
-      </Card>
+      </div>
     </div>
   );
 }

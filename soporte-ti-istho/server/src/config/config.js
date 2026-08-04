@@ -9,6 +9,7 @@ module.exports = {
     port: process.env.DB_PORT || 3306,
     dialect: 'mysql',
     timezone: '-05:00',
+    seederStorage: 'sequelize',
     dialectOptions: {
       charset: 'utf8mb4',
     },
@@ -24,6 +25,7 @@ module.exports = {
     use_env_variable: 'DATABASE_URL',
     dialect: 'mysql',
     timezone: '-05:00',
+    seederStorage: 'sequelize',
     dialectOptions: {
       charset: 'utf8mb4',
       ssl: { require: true, rejectUnauthorized: false },

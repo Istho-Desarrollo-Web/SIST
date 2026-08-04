@@ -1,19 +1,26 @@
 require('dotenv').config();
+const { execSync } = require('child_process');
 const app = require('./src/app');
 const sequelize = require('./src/config/database');
 const logger = require('./src/utils/logger');
 
 const PORT = process.env.PORT || 5000;
 
+function migrarYSembrar() {
+  execSync('npx sequelize-cli db:migrate', { stdio: 'inherit' });
+  execSync('npx sequelize-cli db:seed:all', { stdio: 'inherit' });
+}
+
 async function start() {
   try {
     await sequelize.authenticate();
     logger.info('Base de datos conectada');
+    migrarYSembrar();
     app.listen(PORT, () => {
       logger.info('Servidor iniciado', { port: PORT, env: process.env.NODE_ENV });
     });
   } catch (err) {
-    logger.error('Error al conectar la base de datos', { error: err.message });
+    logger.error('Error al iniciar el servidor', { error: err.message });
     process.exit(1);
   }
 }

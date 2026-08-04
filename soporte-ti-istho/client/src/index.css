@@ -1,5 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap');
 @import "tailwindcss";
+
+/* Centhrix design system — tokens + componentes cx-*, identidad visual actual de la app */
+@import "./styles/centhrix/colors.css";
+@import "./styles/centhrix/typography.css";
+@import "./styles/centhrix/spacing.css";
+@import "./styles/centhrix/radius.css";
+@import "./styles/centhrix/shadows.css";
+@import "./styles/centhrix/motion.css";
+@import "./styles/centhrix/base.css";
+@import "./styles/centhrix/components.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -88,16 +99,10 @@ html.theme-transitioning *::after {
 * { box-sizing: border-box; }
 
 html {
-  background-color: #f8fafc; /* slate-50 — fallback claro */
   overflow-x: hidden;
 }
 
-html.dark {
-  background-color: #0f1629; /* navy-900 — fallback oscuro */
-}
-
 body {
-  font-family: 'Montserrat', sans-serif;
   margin: 0;
   padding: 0;
   min-height: 100dvh;
@@ -107,5 +112,4 @@ body {
 /* Scrollbar personalizado */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1B2340; border-radius: 3px; }
-.dark ::-webkit-scrollbar-thumb { background: #575F78; }
+::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 3px; }

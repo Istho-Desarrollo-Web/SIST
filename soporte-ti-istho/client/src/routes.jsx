@@ -21,9 +21,9 @@ import { FormularioRespuestasPage } from './pages/FormularioRespuestasPage';
 
 function AppLayout({ children }) {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-navy-900">
+    <div style={{ minHeight: '100vh', background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'var(--font-body)' }}>
       <Navbar />
-      <main>{children}</main>
+      <main style={{ padding: '24px 24px 48px' }}>{children}</main>
     </div>
   );
 }

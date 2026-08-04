@@ -1,0 +1,123 @@
+/* Centhrix color tokens.
+   Dark is the PRIMARY identity (not an alt mode) — ramps run 100 (deepest/darkest)
+   -> 900 (lightest), which reads naturally against a dark UI. [data-theme="light"]
+   overrides the same variables for the complementary light mode.
+   Mono-accent scheme: one accent (coral/red, hue ~29 in OKLCH), no second accent. */
+:root {
+  /* Neutral ramp - navy-tinted dark (hue ~265) */
+  --neutral-100: oklch(0.16 0.028 265);   /* app background #0f1023 */
+  --neutral-150: oklch(0.185 0.032 265);  /* surface #151631 */
+  --neutral-200: oklch(0.225 0.036 265);  /* card #1a1b3a */
+  --neutral-300: oklch(0.28 0.03 265);    /* raised card / hover fill */
+  --neutral-400: oklch(0.38 0.024 265);   /* borders, dividers (low opacity use) */
+  --neutral-500: oklch(0.50 0.018 265);   /* disabled text, placeholders */
+  --neutral-600: oklch(0.62 0.014 265);   /* muted text */
+  --neutral-700: oklch(0.745 0.01 265);   /* secondary text */
+  --neutral-800: oklch(0.85 0.007 265);   /* near-white */
+  --neutral-900: oklch(0.965 0.004 265);  /* primary text #f0f0f5 */
+
+  /* Accent ramp - coral/red (base #e74c3c, hover/pressed #c0392b) */
+  --accent-100: oklch(0.22 0.05 29);   /* deepest tinted fill (chip/badge bg) */
+  --accent-200: oklch(0.27 0.08 29);   /* subtle tinted fill, hover bg */
+  --accent-300: oklch(0.33 0.11 29);   /* pressed tinted fill */
+  --accent-400: oklch(0.45 0.15 29);
+  --accent-500: oklch(0.565 0.19 29);  /* base accent #e74c3c */
+  --accent-600: oklch(0.48 0.175 29);  /* hover/pressed #c0392b */
+  --accent-700: oklch(0.66 0.16 29);   /* text/icon on tinted dark fills */
+  --accent-800: oklch(0.78 0.11 29);   /* lighter text-on-fill, high contrast */
+  --accent-900: oklch(0.9 0.05 29);    /* lightest coral tint */
+
+  /* Semantic roles - dark (default) */
+  --color-bg: var(--neutral-100);
+  --color-surface: var(--neutral-150);
+  --color-card: var(--neutral-200);
+  --color-card-raised: var(--neutral-300);
+  --color-border: color-mix(in oklch, var(--neutral-900) 12%, transparent);
+  --color-border-strong: color-mix(in oklch, var(--neutral-900) 20%, transparent);
+  --color-text: var(--neutral-900);
+  --color-text-secondary: var(--neutral-700);
+  --color-text-muted: color-mix(in oklch, var(--neutral-900) 58%, transparent);
+  --color-accent: var(--accent-500);
+  --color-accent-hover: var(--accent-600);
+  --color-accent-pressed: color-mix(in oklch, var(--accent-600) 82%, black);
+  --color-accent-subtle-bg: var(--accent-200);
+  --color-accent-subtle-text: var(--accent-800);
+  --color-on-accent: white;
+  --color-focus-ring: var(--accent-500);
+  --color-disabled-opacity: 0.45;
+
+  --color-danger: var(--color-accent);
+  --color-danger-hover: var(--color-accent-hover);
+  --color-danger-subtle-bg: var(--color-accent-subtle-bg);
+  --color-danger-subtle-text: var(--color-accent-subtle-text);
+  --color-success: oklch(0.72 0.19 149);
+  --color-success-hover: oklch(0.6 0.175 149);
+  --color-success-subtle-bg: oklch(0.28 0.06 149);
+  --color-success-subtle-text: oklch(0.82 0.16 149);
+  --color-warning: oklch(0.72 0.19 80);
+  --color-warning-hover: oklch(0.6 0.175 80);
+  --color-warning-subtle-bg: oklch(0.28 0.06 80);
+  --color-warning-subtle-text: oklch(0.82 0.16 80);
+  --color-info: oklch(0.72 0.19 250);
+  --color-info-hover: oklch(0.6 0.175 250);
+  --color-info-subtle-bg: oklch(0.28 0.06 250);
+  --color-info-subtle-text: oklch(0.82 0.16 250);
+}
+
+[data-theme="light"] {
+  --neutral-100: oklch(0.985 0.003 265);
+  --neutral-150: oklch(0.965 0.004 265);
+  --neutral-200: oklch(1 0 0);
+  --neutral-300: oklch(0.93 0.006 265);
+  --neutral-400: oklch(0.82 0.008 265);
+  --neutral-500: oklch(0.68 0.012 265);
+  --neutral-600: oklch(0.54 0.016 265);
+  --neutral-700: oklch(0.4 0.02 265);
+  --neutral-800: oklch(0.26 0.024 265);
+  --neutral-900: oklch(0.16 0.02 265);
+
+  --accent-100: oklch(0.95 0.03 29);
+  --accent-200: oklch(0.89 0.07 29);
+  --accent-300: oklch(0.8 0.12 29);
+  --accent-400: oklch(0.7 0.17 29);
+  --accent-500: oklch(0.565 0.19 29);
+  --accent-600: oklch(0.48 0.175 29);
+  --accent-700: oklch(0.4 0.15 29);
+  --accent-800: oklch(0.3 0.11 29);
+  --accent-900: oklch(0.2 0.07 29);
+
+  --color-bg: var(--neutral-100);
+  --color-surface: var(--neutral-150);
+  --color-card: var(--neutral-200);
+  --color-card-raised: white;
+  --color-border: color-mix(in oklch, var(--neutral-900) 10%, transparent);
+  --color-border-strong: color-mix(in oklch, var(--neutral-900) 16%, transparent);
+  --color-text: var(--neutral-900);
+  --color-text-secondary: var(--neutral-700);
+  --color-text-muted: color-mix(in oklch, var(--neutral-900) 55%, transparent);
+  --color-accent: var(--accent-500);
+  --color-accent-hover: var(--accent-600);
+  --color-accent-pressed: color-mix(in oklch, var(--accent-600) 85%, black);
+  --color-accent-subtle-bg: var(--accent-100);
+  --color-accent-subtle-text: var(--accent-700);
+  --color-on-accent: white;
+  --color-focus-ring: var(--accent-500);
+  --color-disabled-opacity: 0.45;
+
+  --color-success: oklch(0.6 0.16 149);
+  --color-success-hover: oklch(0.48 0.175 149);
+  --color-success-subtle-bg: oklch(0.93 0.06 149);
+  --color-success-subtle-text: oklch(0.38 0.12 149);
+  --color-danger: var(--color-accent);
+  --color-danger-hover: var(--color-accent-hover);
+  --color-danger-subtle-bg: var(--color-accent-subtle-bg);
+  --color-danger-subtle-text: var(--color-accent-subtle-text);
+  --color-warning: oklch(0.6 0.16 80);
+  --color-warning-hover: oklch(0.48 0.175 80);
+  --color-warning-subtle-bg: oklch(0.93 0.06 80);
+  --color-warning-subtle-text: oklch(0.38 0.12 80);
+  --color-info: oklch(0.6 0.16 250);
+  --color-info-hover: oklch(0.48 0.175 250);
+  --color-info-subtle-bg: oklch(0.93 0.06 250);
+  --color-info-subtle-text: oklch(0.38 0.12 250);
+}

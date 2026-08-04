@@ -6,8 +6,8 @@ export function ProtectedRoute({ children, roles }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-navy-900">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-orange-500 border-t-transparent" />
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>
+        <div className="cx-spinner" style={{ width: 40, height: 40, borderWidth: 4, color: 'var(--color-accent)' }} />
       </div>
     );
   }

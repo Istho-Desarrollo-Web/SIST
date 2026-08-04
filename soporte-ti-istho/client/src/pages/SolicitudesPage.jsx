@@ -1,20 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Search, RefreshCw, CheckSquare, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Plus, RefreshCw, X, Ticket } from 'lucide-react';
 import { toast } from 'sonner';
 import { solicitudService } from '../services/solicitudService';
 import { usuarioService } from '../services/usuarioService';
-import { Button } from '../components/common/Button';
-import { Card } from '../components/common/Card';
-import { Select } from '../components/common/Select';
-import { Pagination } from '../components/common/Pagination';
-import { SkeletonTable, SkeletonCard } from '../components/common/Skeleton';
-import { EstadoBadge } from '../components/solicitudes/EstadoBadge';
-import { PrioridadBadge } from '../components/solicitudes/PrioridadBadge';
-import { SLAIndicator } from '../components/solicitudes/SLAIndicator';
+import { dashboardService } from '../services/dashboardService';
 import { SolicitudModal } from '../components/solicitudes/SolicitudModal';
 import { SolicitudForm } from '../components/solicitudes/SolicitudForm';
-import { formatFecha, formatFechaCorta } from '../utils/formatters';
-import { ESTADOS_LABEL, PRIORIDADES_LABEL } from '../utils/constants';
+import { formatFecha } from '../utils/formatters';
+import { ESTADOS_LABEL, PRIORIDADES_LABEL, ESTADO_COLORS, PRIORIDAD_COLORS } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 
 const ESTADOS_BULK = [
@@ -23,26 +17,26 @@ const ESTADOS_BULK = [
   'resuelto', 'cerrado',
 ];
 
+function iniciales(nombre) {
+  return (nombre || '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
 export function SolicitudesPage() {
   const { user } = useAuth();
+  const location = useLocation();
   const [solicitudes, setSolicitudes] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ estado: '', prioridad: '', search: '' });
+  const [filters, setFilters] = useState({ estado: '', prioridad: '', search: location.state?.search || '' });
+  const [stats, setStats] = useState(null);
   const [selected, setSelected] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [tecnicos, setTecnicos] = useState([]);
-
-  // Selección masiva
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [bulkEstado, setBulkEstado] = useState('');
-  const [bulkTecnico, setBulkTecnico] = useState('');
   const [loadingEstado, setLoadingEstado] = useState(false);
   const [loadingTecnico, setLoadingTecnico] = useState(false);
-
-  // Checkbox indeterminate en header (desktop y móvil)
-  const checkboxHeaderDesktopRef = useRef(null);
-  const checkboxHeaderMobileRef = useRef(null);
+  const searchTimeout = useRef(null);
+  const [searchInput, setSearchInput] = useState(filters.search);
 
   const cargar = useCallback(async (page = 1) => {
     setLoading(true);
@@ -62,13 +56,28 @@ export function SolicitudesPage() {
   useEffect(() => { cargar(1); }, [cargar]);
 
   useEffect(() => {
+    dashboardService.resumen().then(r => setStats(r.data.data)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (user.rol !== 'usuario') {
       usuarioService.listarTecnicos().then(r => setTecnicos(r.data.data));
     }
   }, [user.rol]);
 
-  // --- Selección ---
-  const toggleId = (id) => {
+  const onSearchInput = (e) => {
+    const v = e.target.value;
+    setSearchInput(v);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => setFilters(f => ({ ...f, search: v })), 350);
+  };
+
+  const canBulk = user.rol !== 'usuario';
+  const pageIds = solicitudes.map(s => s.id);
+  const allSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const toggleSelectAll = () => setSelectedIds(allSelected ? new Set() : new Set(pageIds));
+  const toggleSelect = (id) => (e) => {
+    e.stopPropagation();
     setSelectedIds(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -76,299 +85,176 @@ export function SolicitudesPage() {
     });
   };
 
-  const todosSeleccionados = solicitudes.length > 0 && solicitudes.every(s => selectedIds.has(s.id));
-  const algunoSeleccionado = selectedIds.size > 0 && !todosSeleccionados;
+  const solStats = stats ? [
+    { label: 'Total', value: stats.total, color: 'var(--color-text-secondary)' },
+    { label: 'Abiertas', value: stats.abiertos, color: 'var(--color-info)' },
+    { label: 'Vencidas', value: stats.vencidos, color: 'var(--color-danger)' },
+    { label: 'Resueltas', value: stats.resueltos, color: 'var(--color-success)' },
+  ] : [];
 
-  useEffect(() => {
-    [checkboxHeaderDesktopRef, checkboxHeaderMobileRef].forEach(ref => {
-      if (ref.current) ref.current.indeterminate = algunoSeleccionado;
-    });
-  }, [algunoSeleccionado]);
-
-  const toggleTodos = () => {
-    if (todosSeleccionados) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(solicitudes.map(s => s.id)));
-    }
-  };
-
-  // --- Acción masiva ---
-  const ejecutarBulk = async (accion) => {
-    const valor = accion === 'cambiar_estado' ? bulkEstado : bulkTecnico;
-    if (!valor) { toast.error(accion === 'cambiar_estado' ? 'Selecciona un estado' : 'Selecciona un técnico'); return; }
-    const setLoading = accion === 'cambiar_estado' ? setLoadingEstado : setLoadingTecnico;
-    setLoading(true);
+  const ejecutarBulkEstado = async (estado) => {
+    setLoadingEstado(true);
     try {
-      const res = await solicitudService.bulkAction({ ids: Array.from(selectedIds), accion, valor });
+      const res = await solicitudService.bulkAction({ ids: Array.from(selectedIds), accion: 'cambiar_estado', valor: estado });
       toast.success(res.data.message);
-      setBulkEstado('');
-      setBulkTecnico('');
       cargar(pagination.page);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error al aplicar la acción');
     } finally {
-      setLoading(false);
+      setLoadingEstado(false);
     }
   };
 
-  const canBulk = user.rol !== 'usuario';
+  const ejecutarBulkTecnico = async (tecnicoId) => {
+    setLoadingTecnico(true);
+    try {
+      const res = await solicitudService.bulkAction({ ids: Array.from(selectedIds), accion: 'asignar_tecnico', valor: tecnicoId });
+      toast.success(res.data.message);
+      cargar(pagination.page);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error al aplicar la acción');
+    } finally {
+      setLoadingTecnico(false);
+    }
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-500 dark:text-white">Solicitudes</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Gestión de tickets de soporte</p>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 22, paddingBottom: 18, borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ width: 46, height: 46, borderRadius: 'var(--radius-md)', background: 'var(--color-accent-subtle-bg)', color: 'var(--color-accent-subtle-text)', display: 'grid', placeItems: 'center', flex: 'none' }}>
+            <Ticket size={21} />
+          </span>
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 23, margin: '0 0 2px', letterSpacing: '-0.01em' }}>Solicitudes</h1>
+            <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>Gestión de tickets de soporte</p>
+          </div>
         </div>
-        <Button onClick={() => setShowForm(true)} className="w-full sm:w-auto justify-center">
-          <Plus size={16} />
+        <button type="button" className="cx-btn cx-btn-primary" onClick={() => setShowForm(true)}>
+          <Plus size={14} />
           Nueva Solicitud
-        </Button>
+        </button>
       </div>
 
-      {/* Filtros */}
-      <Card className="p-4">
-        <div className="flex flex-col gap-3">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar por número o empleado..."
-              value={filters.search}
-              onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-              className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-            />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12, marginBottom: 16 }}>
+        {(stats ? solStats : Array.from({ length: 4 })).map((st, i) => (
+          <div key={st?.label ?? i} className="cx-card cx-elev-sm" style={{ padding: '14px 16px' }}>
+            <p className="text-muted" style={{ margin: '0 0 4px', fontSize: 10.5, fontWeight: 700, letterSpacing: 'var(--tracking-wide)', textTransform: 'uppercase' }}>{st?.label ?? ''}</p>
+            {st ? <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: st.color }}>{st.value}</p> : <div className="cx-skeleton" style={{ height: 22, width: '40%' }} />}
           </div>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Select
-                value={filters.estado}
-                onChange={val => setFilters(f => ({ ...f, estado: val }))}
-                placeholder="Todos los estados"
-                options={[
-                  { value: '', label: 'Todos los estados' },
-                  ...Object.entries(ESTADOS_LABEL).map(([v, l]) => ({ value: v, label: l })),
-                ]}
-              />
-            </div>
-            <div className="flex-1">
-              <Select
-                value={filters.prioridad}
-                onChange={val => setFilters(f => ({ ...f, prioridad: val }))}
-                placeholder="Todas las prioridades"
-                options={[
-                  { value: '', label: 'Todas las prioridades' },
-                  ...Object.entries(PRIORIDADES_LABEL).map(([v, l]) => ({ value: v, label: l })),
-                ]}
-              />
-            </div>
-            <Button variant="ghost" onClick={() => cargar(1)} size="md">
-              <RefreshCw size={15} />
-            </Button>
-          </div>
-        </div>
-      </Card>
+        ))}
+      </div>
 
-      {/* Lista / Tabla */}
-      <Card className="overflow-hidden">
+      <div className="cx-card cx-elev-sm" style={{ padding: 16, marginBottom: 16 }}>
+        <input className="cx-input" placeholder="Buscar por número o empleado..." value={searchInput} onChange={onSearchInput} style={{ width: '100%', boxSizing: 'border-box', marginBottom: 12 }} />
+        <p className="text-muted" style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 700, letterSpacing: 'var(--tracking-wide)', textTransform: 'uppercase' }}>Estado</p>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          <button type="button" className={`cx-btn ${!filters.estado ? 'cx-btn-primary' : 'cx-btn-secondary'}`} style={{ fontSize: 12, padding: '5px 11px' }} onClick={() => setFilters(f => ({ ...f, estado: '' }))}>Todos</button>
+          {Object.entries(ESTADOS_LABEL).map(([v, l]) => (
+            <button key={v} type="button" className={`cx-btn ${filters.estado === v ? 'cx-btn-primary' : 'cx-btn-secondary'}`} style={{ fontSize: 12, padding: '5px 11px' }} onClick={() => setFilters(f => ({ ...f, estado: v }))}>{l}</button>
+          ))}
+        </div>
+        <p className="text-muted" style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 700, letterSpacing: 'var(--tracking-wide)', textTransform: 'uppercase' }}>Prioridad</p>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button type="button" className={`cx-btn ${!filters.prioridad ? 'cx-btn-primary' : 'cx-btn-secondary'}`} style={{ fontSize: 12, padding: '5px 11px' }} onClick={() => setFilters(f => ({ ...f, prioridad: '' }))}>Todas</button>
+          {Object.entries(PRIORIDADES_LABEL).map(([v, l]) => (
+            <button key={v} type="button" className={`cx-btn ${filters.prioridad === v ? 'cx-btn-primary' : 'cx-btn-secondary'}`} style={{ fontSize: 12, padding: '5px 11px' }} onClick={() => setFilters(f => ({ ...f, prioridad: v }))}>{l}</button>
+          ))}
+          <button type="button" className="cx-btn cx-btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => cargar(pagination.page)} title="Actualizar"><RefreshCw size={14} /></button>
+        </div>
+      </div>
+
+      <div className="cx-card cx-elev-sm" style={{ overflow: 'hidden' }}>
         {loading ? (
-          <>
-            {/* Mobile skeleton */}
-            <div className="block sm:hidden"><SkeletonCard rows={4} /></div>
-            {/* Desktop skeleton */}
-            <div className="hidden sm:block p-4"><SkeletonTable rows={5} cols={7} /></div>
-          </>
-        ) : solicitudes.length === 0 ? (
-          <p className="py-10 text-center text-slate-400 text-sm">No hay solicitudes</p>
-        ) : (
-          <>
-            {/* Tarjetas móvil */}
-            <div className="sm:hidden divide-y divide-slate-100 dark:divide-navy-600">
-              {canBulk && (
-                <div className="px-4 py-2 flex items-center gap-2 bg-slate-50 dark:bg-navy-800">
-                  <input
-                    type="checkbox"
-                    checked={todosSeleccionados}
-                    ref={checkboxHeaderMobileRef}
-                    onChange={toggleTodos}
-                    className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
-                  />
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Seleccionar página</span>
-                </div>
-              )}
-              {solicitudes.map(s => (
-                <div
-                  key={s.id}
-                  className={`p-4 active:bg-slate-50 dark:active:bg-navy-700/50 transition-colors ${selectedIds.has(s.id) ? 'bg-orange-50 dark:bg-orange-900/10' : ''}`}
-                >
-                  <div className="flex items-start gap-3">
-                    {canBulk && (
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(s.id)}
-                        onChange={() => toggleId(s.id)}
-                        onClick={e => e.stopPropagation()}
-                        className="mt-0.5 w-4 h-4 rounded accent-orange-500 cursor-pointer shrink-0"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelected(s)}>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <span className="font-mono text-xs font-semibold text-orange-600 dark:text-orange-400 leading-tight">{s.numero}</span>
-                        <PrioridadBadge prioridad={s.prioridad} />
-                      </div>
-                      <p className="text-sm font-medium text-navy-500 dark:text-white truncate mb-0.5">
-                        {s.empleado?.nombreCompleto || '-'}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 capitalize">
-                        {s.tipoSolicitud?.replace(/_/g, ' ')}
-                      </p>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <EstadoBadge estado={s.estado} />
-                          <SLAIndicator porcentaje={s.porcentajeSLA} />
-                        </div>
-                        <span className="text-xs text-slate-400 whitespace-nowrap shrink-0">{formatFechaCorta(s.fechaCreacion)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Tabla escritorio */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-navy-800">
-                  <tr className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                    {canBulk && (
-                      <th className="px-4 py-3 w-10">
-                        <input
-                          type="checkbox"
-                          checked={todosSeleccionados}
-                          ref={checkboxHeaderDesktopRef}
-                          onChange={toggleTodos}
-                          className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
-                        />
-                      </th>
-                    )}
-                    <th className="text-left px-4 py-3">Número</th>
-                    <th className="text-left px-4 py-3">Tipo</th>
-                    <th className="text-left px-4 py-3">Empleado</th>
-                    <th className="text-left px-4 py-3">Prioridad</th>
-                    <th className="text-left px-4 py-3">Estado</th>
-                    <th className="text-left px-4 py-3">SLA</th>
-                    <th className="text-left px-4 py-3">Técnico</th>
-                    <th className="text-left px-4 py-3">Fecha</th>
+          <div style={{ padding: 16 }}>
+            <table className="cx-table">
+              <thead><tr><th>Número</th><th>Tipo</th><th>Empleado</th><th>Prioridad</th><th>Estado</th><th>SLA</th><th>Técnico</th><th>Fecha</th></tr></thead>
+              <tbody>
+                {[0, 1, 2, 3, 4].map(i => (
+                  <tr key={i}>
+                    {Array.from({ length: 8 }).map((_, j) => <td key={j}><div className="cx-skeleton" style={{ height: 12, width: '70%' }} /></td>)}
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-navy-600">
-                  {solicitudes.map(s => (
-                    <tr
-                      key={s.id}
-                      className={`hover:bg-slate-50 dark:hover:bg-navy-700/50 transition-colors ${selectedIds.has(s.id) ? 'bg-orange-50 dark:bg-orange-900/10' : ''}`}
-                    >
-                      {canBulk && (
-                        <td className="px-4 py-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(s.id)}
-                            onChange={() => toggleId(s.id)}
-                            onClick={e => e.stopPropagation()}
-                            className="w-4 h-4 rounded accent-orange-500 cursor-pointer"
-                          />
-                        </td>
-                      )}
-                      <td
-                        className="px-4 py-3 font-mono text-xs font-semibold text-orange-600 dark:text-orange-400 cursor-pointer"
-                        onClick={() => setSelected(s)}
-                      >{s.numero}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 max-w-32 truncate cursor-pointer" onClick={() => setSelected(s)}>{s.tipoSolicitud?.replace(/_/g, ' ')}</td>
-                      <td className="px-4 py-3 text-slate-700 dark:text-slate-200 cursor-pointer" onClick={() => setSelected(s)}>{s.empleado?.nombreCompleto || '-'}</td>
-                      <td className="px-4 py-3 cursor-pointer" onClick={() => setSelected(s)}><PrioridadBadge prioridad={s.prioridad} /></td>
-                      <td className="px-4 py-3 cursor-pointer" onClick={() => setSelected(s)}><EstadoBadge estado={s.estado} /></td>
-                      <td className="px-4 py-3 cursor-pointer" onClick={() => setSelected(s)}><SLAIndicator porcentaje={s.porcentajeSLA} /></td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300 cursor-pointer" onClick={() => setSelected(s)}>{s.tecnico?.nombre || <span className="text-slate-400 italic">Sin asignar</span>}</td>
-                      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap cursor-pointer" onClick={() => setSelected(s)}>{formatFecha(s.fechaCreacion)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : solicitudes.length === 0 ? (
+          <div className="cx-empty" style={{ border: 'none', padding: '44px 24px' }}>
+            <div className="cx-empty-icon"><Ticket size={24} /></div>
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, margin: '6px 0 0' }}>No hay solicitudes</p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="cx-table" style={{ minWidth: 760 }}>
+              <thead>
+                <tr>
+                  {canBulk && <th style={{ width: 30 }}><input type="checkbox" checked={allSelected} onChange={toggleSelectAll} /></th>}
+                  <th>Número</th><th>Tipo</th><th>Empleado</th><th>Prioridad</th><th>Estado</th><th>SLA</th><th>Técnico</th><th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {solicitudes.map(s => (
+                  <tr key={s.id} style={{ background: selectedIds.has(s.id) ? 'var(--accent-100)' : 'transparent', cursor: 'pointer' }} onClick={() => setSelected(s)}>
+                    {canBulk && <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedIds.has(s.id)} onChange={toggleSelect(s.id)} /></td>}
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-accent)' }}>{s.numero}</td>
+                    <td className="text-muted" style={{ textTransform: 'capitalize' }}>{s.tipoSolicitud?.replace(/_/g, ' ')}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-accent-subtle-bg)', color: 'var(--color-accent-subtle-text)', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 700, flex: 'none' }}>{iniciales(s.empleado?.nombreCompleto)}</span>
+                        {s.empleado?.nombreCompleto || '-'}
+                      </div>
+                    </td>
+                    <td><span className={`cx-tag ${PRIORIDAD_COLORS[s.prioridad]}`}>{PRIORIDADES_LABEL[s.prioridad]}</span></td>
+                    <td><span className={`cx-tag ${ESTADO_COLORS[s.estado]}`}>{ESTADOS_LABEL[s.estado]}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 90 }}>
+                        <div style={{ flex: 1, background: 'var(--color-border)', borderRadius: 99, height: 5, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', borderRadius: 99, width: `${Math.min(s.porcentajeSLA, 100)}%`, background: s.porcentajeSLA <= 75 ? 'var(--color-success)' : s.porcentajeSLA <= 100 ? 'var(--color-warning)' : 'var(--color-danger)' }} />
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: s.porcentajeSLA <= 75 ? 'var(--color-success)' : s.porcentajeSLA <= 100 ? 'var(--color-warning)' : 'var(--color-danger)' }}>{s.porcentajeSLA}%</span>
+                      </div>
+                    </td>
+                    <td className="text-muted">{s.tecnico?.nombre || 'Sin asignar'}</td>
+                    <td className="text-muted" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{formatFecha(s.fechaCreacion)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-        <div className="px-4 pb-4">
-          <Pagination page={pagination.page} totalPages={pagination.totalPages} onChange={cargar} />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, padding: 16 }}>
+          <button type="button" className="cx-btn cx-btn-ghost cx-btn-icon" disabled={pagination.page <= 1} onClick={() => cargar(pagination.page - 1)}>‹</button>
+          <span className="text-muted" style={{ fontSize: 12 }}>Página {pagination.page} de {pagination.totalPages}</span>
+          <button type="button" className="cx-btn cx-btn-ghost cx-btn-icon" disabled={pagination.page >= pagination.totalPages} onClick={() => cargar(pagination.page + 1)}>›</button>
         </div>
-      </Card>
+      </div>
 
-      {/* Barra de acciones masivas */}
       {canBulk && selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-xl">
-          <div className="bg-navy-500 dark:bg-navy-600 text-white rounded-2xl shadow-2xl px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-            {/* Contador */}
-            <div className="flex items-center gap-2 shrink-0">
-              <CheckSquare size={16} className="text-orange-400" />
-              <span className="text-sm font-semibold tabular-nums">{selectedIds.size}</span>
-              <span className="text-sm text-navy-200">{selectedIds.size === 1 ? 'seleccionada' : 'seleccionadas'}</span>
-              <button
-                onClick={() => setSelectedIds(new Set())}
-                className="ml-1 p-1 rounded hover:bg-navy-400 transition-colors"
-              >
-                <X size={14} className="text-navy-200" />
-              </button>
+        <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 40, width: 'calc(100% - 40px)', maxWidth: 640 }}>
+          <div className="cx-card cx-elev-md" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <strong style={{ fontSize: 13 }}>{selectedIds.size}</strong>
+              <span className="text-muted" style={{ fontSize: 13 }}>seleccionadas</span>
+              <button type="button" className="cx-btn cx-btn-ghost cx-btn-icon" style={{ marginLeft: 'auto', width: 26, height: 26, padding: 0 }} onClick={() => setSelectedIds(new Set())}><X size={13} /></button>
             </div>
-
-            {/* Acciones */}
-            <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
-              {/* Cambiar estado */}
-              <div className="flex gap-2 flex-1 min-w-0">
-                <div className="flex-1 min-w-0">
-                  <Select
-                    value={bulkEstado}
-                    onChange={setBulkEstado}
-                    placeholder="Estado..."
-                    options={[
-                      { value: '', label: 'Estado...' },
-                      ...ESTADOS_BULK.map(e => ({ value: e, label: ESTADOS_LABEL[e] || e })),
-                    ]}
-                  />
-                </div>
-                <button
-                  onClick={() => ejecutarBulk('cambiar_estado')}
-                  disabled={loadingEstado || loadingTecnico || !bulkEstado}
-                  className="shrink-0 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-sm font-medium transition-colors flex items-center gap-1.5"
-                >
-                  {loadingEstado && <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
-                  Aplicar
-                </button>
+            <div>
+              <p className="text-muted" style={{ margin: '0 0 6px', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: 'var(--tracking-wide)' }}>Cambiar estado a</p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {ESTADOS_BULK.map(v => (
+                  <button key={v} type="button" className="cx-btn cx-btn-secondary" disabled={loadingEstado} style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => ejecutarBulkEstado(v)}>{ESTADOS_LABEL[v]}</button>
+                ))}
               </div>
-
-              {/* Asignar técnico — solo admin */}
-              {user.rol === 'admin' && tecnicos.length > 0 && (
-                <div className="flex gap-2 flex-1 min-w-0">
-                  <div className="flex-1 min-w-0">
-                    <Select
-                      value={bulkTecnico}
-                      onChange={setBulkTecnico}
-                      placeholder="Técnico..."
-                      options={[
-                        { value: '', label: 'Técnico...' },
-                        ...tecnicos.map(t => ({ value: String(t.id), label: t.nombre })),
-                      ]}
-                    />
-                  </div>
-                  <button
-                    onClick={() => ejecutarBulk('asignar_tecnico')}
-                    disabled={loadingTecnico || loadingEstado || !bulkTecnico}
-                    className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-sm font-medium transition-colors flex items-center gap-1.5"
-                  >
-                    {loadingTecnico && <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
-                    Asignar
-                  </button>
-                </div>
-              )}
             </div>
+            {user.rol === 'admin' && tecnicos.length > 0 && (
+              <div>
+                <p className="text-muted" style={{ margin: '0 0 6px', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: 'var(--tracking-wide)' }}>Asignar técnico</p>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {tecnicos.map(t => (
+                    <button key={t.id} type="button" className="cx-btn cx-btn-secondary" disabled={loadingTecnico} style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => ejecutarBulkTecnico(t.id)}>{t.nombre}</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

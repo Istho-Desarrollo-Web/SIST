@@ -26,15 +26,8 @@ export function formatMinutos(minutos) {
 }
 
 export function slaColor(porcentaje) {
-  if (porcentaje === null || porcentaje === undefined) return 'bg-slate-200';
-  if (porcentaje <= 75) return 'bg-cgreen-500';
-  if (porcentaje <= 100) return 'bg-amber-500';
-  return 'bg-red-500';
-}
-
-export function slaTextColor(porcentaje) {
-  if (porcentaje === null || porcentaje === undefined) return 'text-slate-500';
-  if (porcentaje <= 75) return 'text-cgreen-600';
-  if (porcentaje <= 100) return 'text-amber-600';
-  return 'text-red-600';
+  if (porcentaje === null || porcentaje === undefined) return 'var(--color-text-muted)';
+  if (porcentaje <= 75) return 'var(--color-success)';
+  if (porcentaje <= 100) return 'var(--color-warning)';
+  return 'var(--color-danger)';
 }

@@ -6,11 +6,12 @@ export function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={toggle}
-      className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/80 hover:text-white"
-      title={dark ? 'Modo claro' : 'Modo oscuro'}
+      className="cx-btn cx-btn-ghost cx-btn-icon"
+      title="Cambiar tema"
     >
-      {dark ? <Sun size={18} /> : <Moon size={18} />}
+      {dark ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   );
 }

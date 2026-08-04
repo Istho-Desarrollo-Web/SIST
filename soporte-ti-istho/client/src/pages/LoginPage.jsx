@@ -4,21 +4,26 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, LogIn, ArrowLeft, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Input } from '../components/common/Input';
-import { Button } from '../components/common/Button';
-import { LogoIcon } from '../components/common/LogoSIST';
+import { TicketMark } from '../components/common/CenthrixIcons';
 
 const schema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(1, 'Contraseña requerida'),
 });
 
+const BULLETS = [
+  'Numeración automática de tickets',
+  'Cumplimiento de SLA en tiempo real',
+  'Trazabilidad completa ISO 9001',
+];
+
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [showPwd, setShowPwd] = useState(false);
+  const [remember, setRemember] = useState(false);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
@@ -35,76 +40,97 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-navy-900 via-navy-700 to-navy-500 px-4 py-8">
-      <div className="w-full max-w-sm">
-        {/* Botón volver */}
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="flex items-center gap-1.5 text-navy-200 hover:text-white text-sm mb-6 transition-colors"
-        >
-          <ArrowLeft size={15} />
-          Volver al inicio
-        </button>
-
-        {/* Logo */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-500 rounded-2xl mb-3 shadow-xl shadow-orange-900/40">
-            <LogoIcon size={36} />
+    <div style={{ minHeight: '100vh', background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'var(--font-body)', display: 'flex' }}>
+      <div className="sist-login-panel" style={{ flex: 1, minWidth: 320, position: 'relative', overflow: 'hidden', background: 'var(--color-accent)', display: 'none', flexDirection: 'column', justifyContent: 'center', padding: 60, color: 'white' }}>
+        <div style={{ position: 'absolute', top: -120, right: -100, width: 420, height: 420, borderRadius: '50%', background: 'rgba(255,255,255,.08)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -160, left: -80, width: 360, height: 360, borderRadius: '50%', background: 'rgba(255,255,255,.06)', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', maxWidth: 420 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 26 }}>
+            <TicketMark size={26} />
           </div>
-          <h1 className="text-xl font-bold text-white">Soporte TI</h1>
-          <p className="text-navy-200 text-xs mt-1">ISTHO S.A.S. — Centro Logístico Industrial del Norte</p>
+          <h1 style={{ fontSize: 32, margin: '0 0 12px', lineHeight: 1.15 }}>Soporte TI para el equipo ISTHO</h1>
+          <p style={{ margin: '0 0 32px', fontSize: 14.5, opacity: .85, textWrap: 'pretty' }}>Reporta incidentes, da seguimiento a tus tickets y consulta el estado de tus solicitudes en un solo lugar.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {BULLETS.map((b) => (
+              <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,.16)', display: 'grid', placeItems: 'center', flex: 'none' }}>
+                  <Check size={13} strokeWidth={2.5} />
+                </span>
+                <span style={{ fontSize: 13.5 }}>{b}</span>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
 
-        {/* Card */}
-        <div className="bg-white dark:bg-navy-700 rounded-2xl shadow-2xl px-6 py-7">
-          <h2 className="text-lg font-bold text-navy-500 dark:text-white mb-5">Iniciar sesión</h2>
+      <div style={{ flex: 1, minWidth: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', position: 'relative' }}>
+        <div style={{ width: '100%', maxWidth: 380 }}>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 20 }}
+          >
+            <ArrowLeft size={15} />
+            Volver al inicio
+          </button>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input
-              label="Correo electrónico"
-              type="email"
-              autoComplete="email"
-              placeholder="usuario@istho.com.co"
-              error={errors.email?.message}
-              {...register('email')}
-            />
+          <div style={{ marginBottom: 24 }}>
+            <h2 style={{ fontSize: 22, margin: '0 0 4px' }}>Iniciar sesión</h2>
+            <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>Ingresa con tu cuenta de ISTHO S.A.S.</p>
+          </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Contraseña</label>
-              <div className="relative">
+          <form onSubmit={handleSubmit(onSubmit)} className="cx-card cx-elev-md" style={{ padding: '28px 24px' }}>
+            <div className="cx-field" style={{ marginBottom: 14 }}>
+              <label className="cx-label">Correo electrónico</label>
+              <input
+                className="cx-input"
+                type="email"
+                autoComplete="email"
+                placeholder="usuario@istho.com.co"
+                style={errors.email ? { borderColor: 'var(--color-danger)' } : undefined}
+                {...register('email')}
+              />
+              {errors.email && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.email.message}</p>}
+            </div>
+
+            <div className="cx-field" style={{ marginBottom: 14 }}>
+              <label className="cx-label">Contraseña</label>
+              <div style={{ position: 'relative' }}>
                 <input
+                  className="cx-input"
                   type={showPwd ? 'text' : 'password'}
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  className={`w-full px-3 py-2.5 pr-10 rounded-lg border text-sm transition-colors
-                    bg-white dark:bg-navy-800 text-slate-900 dark:text-white
-                    border-slate-300 dark:border-navy-500
-                    focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500
-                    ${errors.password ? 'border-red-500' : ''}`}
+                  style={{ width: '100%', boxSizing: 'border-box', paddingRight: 36, ...(errors.password ? { borderColor: 'var(--color-danger)' } : {}) }}
                   {...register('password')}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPwd(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label="Mostrar contraseña"
+                  style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex' }}
                 >
-                  {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
+              {errors.password && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.password.message}</p>}
             </div>
 
-            <Button type="submit" loading={isSubmitting} className="w-full justify-center mt-1">
-              <LogIn size={16} />
-              Ingresar
-            </Button>
-          </form>
-        </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+                <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+                Recordarme
+              </label>
+              <a style={{ fontSize: 12.5, color: 'var(--color-accent)', cursor: 'pointer', textDecoration: 'none' }}>¿Olvidaste tu contraseña?</a>
+            </div>
 
-        <p className="text-center text-navy-300 text-xs mt-5">
-          Sistema Integral de Solicitudes para Soporte Tecnológico v1.0
-        </p>
+            <button type="submit" disabled={isSubmitting} className="cx-btn cx-btn-primary cx-btn-block">
+              <LogIn size={15} />
+              Ingresar
+            </button>
+          </form>
+          <p className="text-muted" style={{ textAlign: 'center', fontSize: 11.5, margin: '18px 0 0' }}>Sistema Integral de Solicitudes para Soporte Tecnológico v1.0</p>
+        </div>
       </div>
     </div>
   );

@@ -12,13 +12,13 @@ function getKind(nombre) {
 
 function getIcon(nombre) {
   const kind = getKind(nombre);
-  if (kind === 'image') return { Icon: ImageIcon,       color: 'text-blue-500' };
-  if (kind === 'pdf')   return { Icon: FileText,         color: 'text-red-500' };
-  if (kind === 'video') return { Icon: Film,             color: 'text-purple-500' };
-  if (kind === 'audio') return { Icon: Music,            color: 'text-pink-500' };
+  if (kind === 'image') return { Icon: ImageIcon, color: 'var(--color-info)' };
+  if (kind === 'pdf')   return { Icon: FileText,   color: 'var(--color-danger)' };
+  if (kind === 'video') return { Icon: Film,       color: 'var(--color-accent)' };
+  if (kind === 'audio') return { Icon: Music,      color: 'var(--color-accent)' };
   const ext = (nombre || '').split('.').pop().toLowerCase();
-  if (['xls','xlsx'].includes(ext)) return { Icon: FileSpreadsheet, color: 'text-cgreen-600' };
-  return { Icon: FileText, color: 'text-orange-500' };
+  if (['xls','xlsx'].includes(ext)) return { Icon: FileSpreadsheet, color: 'var(--color-success)' };
+  return { Icon: FileText, color: 'var(--color-accent)' };
 }
 
 // Cloudinary PDFs subidos con resource_type:'auto' quedan en image/upload y requieren
@@ -81,86 +81,65 @@ function PreviewPanel({ archivo, onClose }) {
   }, [url, kind]);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div
-        className="relative bg-white dark:bg-navy-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-navy-600 shrink-0">
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate pr-4">{archivo.nombre}</p>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => downloadBlob(url, archivo.nombre)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-700 text-slate-500 hover:text-orange-500 transition-colors"
-              title="Descargar"
-            >
+    <div style={{ position: 'fixed', inset: 0, zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb, black 70%, transparent)', padding: 16 }} onClick={onClose}>
+      <div className="cx-dialog" style={{ position: 'relative', width: '100%', maxWidth: 720, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--color-border)', flex: 'none' }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 16 }}>{archivo.nombre}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 'none' }}>
+            <button type="button" onClick={() => downloadBlob(url, archivo.nombre)} className="cx-btn cx-btn-ghost cx-btn-icon" title="Descargar">
               <Download size={16} />
             </button>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-700 text-slate-500 hover:text-red-500 transition-colors"
-            >
+            <button type="button" onClick={onClose} className="cx-btn cx-btn-ghost cx-btn-icon">
               <X size={16} />
             </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto flex items-center justify-center bg-slate-100 dark:bg-navy-900 min-h-0">
+        <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-surface)', minHeight: 0 }}>
           {kind === 'image' && (
-            <img src={url} alt={archivo.nombre} className="max-w-full max-h-full object-contain p-2" />
+            <img src={url} alt={archivo.nombre} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', padding: 8 }} />
           )}
           {kind === 'pdf' && (
             pdfLoading ? (
-              <div className="flex flex-col items-center gap-3 text-slate-400">
-                <Loader2 size={32} className="animate-spin" />
-                <p className="text-sm">Cargando PDF...</p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--color-text-muted)' }}>
+                <Loader2 size={32} className="cx-spinner" />
+                <p style={{ fontSize: 13 }}>Cargando PDF...</p>
               </div>
             ) : pdfError ? (
-              <div className="p-8 text-center space-y-3">
-                <AlertCircle size={40} className="mx-auto text-red-400" />
-                <p className="text-sm text-slate-500 dark:text-slate-400">No se pudo cargar el PDF.</p>
-                <button
-                  type="button"
-                  onClick={() => window.open(url, '_blank')}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-colors"
-                >
+              <div style={{ padding: 32, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+                <AlertCircle size={40} color="var(--color-danger)" />
+                <p className="text-muted" style={{ fontSize: 13 }}>No se pudo cargar el PDF.</p>
+                <button type="button" onClick={() => window.open(url, '_blank')} className="cx-btn cx-btn-primary">
                   <ExternalLink size={14} />
                   Abrir en nueva pestaña
                 </button>
               </div>
             ) : (
-              <iframe src={pdfBlobUrl} title={archivo.nombre} className="w-full h-full min-h-[60vh]" style={{ border: 'none' }} />
+              <iframe src={pdfBlobUrl} title={archivo.nombre} style={{ width: '100%', height: '100%', minHeight: '60vh', border: 'none' }} />
             )
           )}
           {kind === 'video' && (
-            <video controls className="max-w-full max-h-full" style={{ maxHeight: '70vh' }}>
+            <video controls style={{ maxWidth: '100%', maxHeight: '70vh' }}>
               <source src={url} />
             </video>
           )}
           {kind === 'audio' && (
-            <div className="p-8 text-center space-y-4">
-              <div className="w-20 h-20 bg-pink-100 dark:bg-pink-900/30 rounded-full flex items-center justify-center mx-auto">
-                <Music size={36} className="text-pink-500" />
+            <div style={{ padding: 32, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
+              <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--color-accent-subtle-bg)', display: 'grid', placeItems: 'center' }}>
+                <Music size={36} color="var(--color-accent-subtle-text)" />
               </div>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{archivo.nombre}</p>
-              <audio controls className="w-full max-w-xs mx-auto">
+              <p style={{ fontSize: 13, fontWeight: 600 }}>{archivo.nombre}</p>
+              <audio controls style={{ width: '100%', maxWidth: 320 }}>
                 <source src={url} />
               </audio>
             </div>
           )}
           {kind === 'other' && (
-            <div className="p-8 text-center space-y-3">
-              <FileText size={48} className="mx-auto text-slate-400" />
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{archivo.nombre}</p>
-              <p className="text-xs text-slate-400">Vista previa no disponible para este tipo de archivo.</p>
-              <button
-                type="button"
-                onClick={() => downloadBlob(url, archivo.nombre)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-colors"
-              >
+            <div style={{ padding: 32, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+              <FileText size={48} color="var(--color-text-muted)" />
+              <p style={{ fontSize: 13, fontWeight: 600 }}>{archivo.nombre}</p>
+              <p className="text-muted" style={{ fontSize: 12 }}>Vista previa no disponible para este tipo de archivo.</p>
+              <button type="button" onClick={() => downloadBlob(url, archivo.nombre)} className="cx-btn cx-btn-primary">
                 <Download size={15} />
                 Descargar
               </button>
@@ -181,10 +160,8 @@ export function ArchivoViewer({ archivos }) {
   return (
     <>
       <div>
-        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">
-          Archivos adjuntos ({list.length})
-        </p>
-        <div className="space-y-1.5">
+        <p className="cx-label" style={{ margin: '0 0 8px' }}>Archivos adjuntos ({list.length})</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {list.map((a, i) => {
             const { Icon, color } = getIcon(a.nombre);
             return (
@@ -192,14 +169,14 @@ export function ArchivoViewer({ archivos }) {
                 key={i}
                 type="button"
                 onClick={() => setSelected(a)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 bg-slate-50 dark:bg-navy-800 hover:bg-slate-100 dark:hover:bg-navy-700 rounded-lg border border-slate-200 dark:border-navy-600 transition-colors group text-left"
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', textAlign: 'left' }}
               >
-                <Icon size={16} className={color} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate">{a.nombre}</p>
-                  {a.size && <p className="text-xs text-slate-400">{(a.size / 1024).toFixed(0)} KB</p>}
+                <Icon size={16} color={color} style={{ flex: 'none' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.nombre}</p>
+                  {a.size && <p className="text-muted" style={{ margin: 0, fontSize: 11 }}>{(a.size / 1024).toFixed(0)} KB</p>}
                 </div>
-                <Eye size={14} className="text-slate-400 group-hover:text-orange-500 transition-colors shrink-0" />
+                <Eye size={14} color="var(--color-text-muted)" style={{ flex: 'none' }} />
               </button>
             );
           })}

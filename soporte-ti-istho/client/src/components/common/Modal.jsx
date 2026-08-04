@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
+const SIZES = { sm: 360, md: 480, lg: 640 };
+
 export function Modal({ open, onClose, title, children, size = 'md' }) {
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden';
@@ -10,19 +12,20 @@ export function Modal({ open, onClose, title, children, size = 'md' }) {
 
   if (!open) return null;
 
-  const sizes = { sm: 'sm:max-w-md', md: 'sm:max-w-2xl', lg: 'sm:max-w-4xl' };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.15s_ease]" onClick={onClose} />
-      <div className={`relative w-full ${sizes[size]} bg-white dark:bg-navy-700 rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-[slideUp_0.2s_ease-out]`}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-navy-600 shrink-0">
-          <h2 className="text-base sm:text-lg font-semibold text-navy-500 dark:text-white truncate min-w-0">{title}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-600 transition-colors shrink-0">
-            <X size={18} className="text-slate-500 dark:text-slate-400" />
+    <div className="cx-dialog-backdrop" onClick={onClose}>
+      <div
+        className="cx-dialog"
+        style={{ width: '100%', maxWidth: SIZES[size] ?? SIZES.md, maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
+          <h3 style={{ margin: 0, fontSize: 17, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</h3>
+          <button type="button" onClick={onClose} className="cx-btn cx-btn-ghost cx-btn-icon" style={{ flex: 'none' }}>
+            <X size={14} />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 min-h-0 p-5 sm:p-6">{children}</div>
+        <div style={{ minHeight: 0 }}>{children}</div>
       </div>
     </div>
   );

@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { UserCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
-import { Card } from '../components/common/Card';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 
@@ -35,50 +34,56 @@ export function PerfilPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      <h1 className="text-2xl font-bold text-navy-500 dark:text-white">Mi Perfil</h1>
+    <div style={{ maxWidth: 680 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22, paddingBottom: 18, borderBottom: '1px solid var(--color-border)' }}>
+        <span style={{ width: 46, height: 46, borderRadius: 'var(--radius-md)', background: 'var(--color-accent-subtle-bg)', color: 'var(--color-accent-subtle-text)', display: 'grid', placeItems: 'center', flex: 'none' }}>
+          <UserCircle2 size={21} />
+        </span>
+        <div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 23, margin: '0 0 2px', letterSpacing: '-0.01em' }}>Mi Perfil</h1>
+          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>Gestiona tu información y seguridad</p>
+        </div>
+      </div>
 
-      {/* Info */}
-      <Card className="p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center">
-            <span className="text-white text-2xl font-bold">{user?.nombre?.[0]?.toUpperCase()}</span>
-          </div>
+      <div className="cx-card cx-elev-sm" style={{ padding: 22, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+          <span style={{ width: 60, height: 60, borderRadius: 'var(--radius-lg)', background: 'var(--color-accent)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 22, fontWeight: 700, flex: 'none' }}>
+            {user?.nombre?.[0]?.toUpperCase()}
+          </span>
           <div>
-            <h2 className="text-xl font-bold text-navy-500 dark:text-white">{user?.nombre}</h2>
-            <p className="text-slate-500 dark:text-slate-400">{ROLES_LABEL[user?.rol]}</p>
+            <h2 style={{ fontSize: 18, margin: '0 0 2px' }}>{user?.nombre}</h2>
+            <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>{ROLES_LABEL[user?.rol] || user?.rol}</p>
           </div>
         </div>
-        <div className="grid sm:grid-cols-2 gap-4 text-sm">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 16, fontSize: 13 }}>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase">Email</p>
-            <p className="text-navy-500 dark:text-white mt-0.5">{user?.email}</p>
+            <p className="cx-label" style={{ margin: '0 0 3px' }}>Email</p>
+            <p style={{ margin: 0 }}>{user?.email}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase">Área</p>
-            <p className="text-navy-500 dark:text-white mt-0.5">{user?.area || '-'}</p>
+            <p className="cx-label" style={{ margin: '0 0 3px' }}>Área</p>
+            <p style={{ margin: 0 }}>{user?.area || '-'}</p>
           </div>
           {user?.especialidad && (
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase">Especialidad</p>
-              <p className="text-navy-500 dark:text-white mt-0.5">{user.especialidad}</p>
+              <p className="cx-label" style={{ margin: '0 0 3px' }}>Especialidad</p>
+              <p style={{ margin: 0 }}>{user.especialidad}</p>
             </div>
           )}
         </div>
-      </Card>
+      </div>
 
-      {/* Cambiar contraseña */}
-      <Card className="p-6">
-        <h3 className="font-semibold text-navy-500 dark:text-white mb-4">Cambiar contraseña</h3>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="cx-card cx-elev-sm" style={{ padding: 22 }}>
+        <h3 style={{ fontSize: 14.5, margin: '0 0 16px' }}>Cambiar contraseña</h3>
+        <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Input label="Contraseña actual" type="password" error={errors.passwordActual?.message} {...register('passwordActual')} />
           <Input label="Nueva contraseña" type="password" error={errors.passwordNuevo?.message} {...register('passwordNuevo')} />
           <Input label="Confirmar nueva contraseña" type="password" error={errors.confirmar?.message} {...register('confirmar')} />
-          <div className="flex justify-end">
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button type="submit" loading={isSubmitting}>Actualizar contraseña</Button>
           </div>
         </form>
-      </Card>
+      </div>
     </div>
   );
 }

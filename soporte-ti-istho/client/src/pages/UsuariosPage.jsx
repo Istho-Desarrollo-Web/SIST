@@ -1,18 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit2, UserX } from 'lucide-react';
+import { Plus, Edit2, UserX, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { usuarioService } from '../services/usuarioService';
 import { Button } from '../components/common/Button';
-import { Card } from '../components/common/Card';
 import { Input } from '../components/common/Input';
 import { Modal } from '../components/common/Modal';
-import { Pagination } from '../components/common/Pagination';
-import { SkeletonTable } from '../components/common/Skeleton';
-import { Badge } from '../components/common/Badge';
-import { Select } from '../components/common/Select';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 
 const schemaBase = z.object({
@@ -28,11 +23,11 @@ const schemaCreate = schemaBase.extend({ password: z.string().min(8, 'Mínimo 8 
 const schemaEdit = schemaBase.extend({ password: z.string().min(8).optional().or(z.literal('')) });
 
 const ROLES_LABEL = { admin: 'Administrador', tecnico: 'Técnico', usuario: 'Usuario' };
-const ROLES_COLOR = {
-  admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  tecnico: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  usuario: 'bg-slate-100 text-slate-700 dark:bg-navy-700 dark:text-slate-300',
-};
+const ROLES_TAG = { admin: 'cx-tag-accent', tecnico: 'cx-tag-info', usuario: 'cx-tag-neutral' };
+
+function iniciales(nombre) {
+  return (nombre || '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
 
 function UsuarioForm({ usuario, onClose, onSaved }) {
   const isEdit = !!usuario;
@@ -60,36 +55,36 @@ function UsuarioForm({ usuario, onClose, onSaved }) {
 
   return (
     <Modal open onClose={onClose} title={isEdit ? 'Editar Usuario' : 'Nuevo Usuario'}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid sm:grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 14 }}>
           <Input label="Identificación" error={errors.identificacion?.message} {...register('identificacion')} disabled={isEdit} />
           <Input label="Nombre completo" error={errors.nombre?.message} {...register('nombre')} />
           <Input label="Email" type="email" error={errors.email?.message} {...register('email')} />
+          <Input label="Área" error={errors.area?.message} {...register('area')} />
+          <Input label="Especialidad" error={errors.especialidad?.message} {...register('especialidad')} />
+          <Input
+            label={isEdit ? 'Contraseña (opcional)' : 'Contraseña'}
+            type="password"
+            error={errors.password?.message}
+            placeholder={isEdit ? 'Dejar vacío para no cambiar' : ''}
+            {...register('password')}
+          />
+        </div>
+        <div>
+          <p className="cx-label" style={{ margin: '0 0 8px' }}>Rol</p>
           <Controller
             name="rol"
             control={control}
             render={({ field }) => (
-              <Select
-                label="Rol"
-                value={field.value}
-                onChange={field.onChange}
-                options={Object.entries(ROLES_LABEL).map(([v, l]) => ({ value: v, label: l }))}
-              />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {Object.entries(ROLES_LABEL).map(([v, l]) => (
+                  <button key={v} type="button" className={`cx-btn ${field.value === v ? 'cx-btn-primary' : 'cx-btn-secondary'}`} style={{ fontSize: 12, padding: '5px 12px' }} onClick={() => field.onChange(v)}>{l}</button>
+                ))}
+              </div>
             )}
           />
-          <Input label="Área" error={errors.area?.message} {...register('area')} />
-          <Input label="Especialidad" error={errors.especialidad?.message} {...register('especialidad')} />
-          <div className="sm:col-span-2">
-            <Input
-              label={isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña'}
-              type="password"
-              error={errors.password?.message}
-              placeholder={isEdit ? 'Dejar vacío para no cambiar' : ''}
-              {...register('password')}
-            />
-          </div>
         </div>
-        <div className="flex justify-end gap-3 pt-2">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button type="submit" loading={isSubmitting}>{isEdit ? 'Guardar' : 'Crear'}</Button>
         </div>
@@ -127,99 +122,73 @@ export function UsuariosPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-500 dark:text-white">Usuarios del Sistema</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Solo administradores pueden gestionar usuarios</p>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 22, paddingBottom: 18, borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ width: 46, height: 46, borderRadius: 'var(--radius-md)', background: 'var(--color-accent-subtle-bg)', color: 'var(--color-accent-subtle-text)', display: 'grid', placeItems: 'center', flex: 'none' }}>
+            <UserCog size={21} />
+          </span>
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 23, margin: '0 0 2px', letterSpacing: '-0.01em' }}>Usuarios del Sistema</h1>
+            <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>Solo administradores pueden gestionar usuarios</p>
+          </div>
         </div>
-        <Button onClick={() => setModal('create')} className="w-full sm:w-auto justify-center">
-          <Plus size={16} />Nuevo Usuario
-        </Button>
+        <button type="button" className="cx-btn cx-btn-primary" onClick={() => setModal('create')}>
+          <Plus size={14} />
+          Nuevo Usuario
+        </button>
       </div>
 
-      <Card className="overflow-hidden">
+      <div className="cx-card cx-elev-sm" style={{ overflow: 'hidden' }}>
         {loading ? (
-          <div className="p-4"><SkeletonTable rows={4} cols={4} /></div>
+          <div style={{ padding: 16 }}>
+            <table className="cx-table">
+              <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Área</th><th>Estado</th><th></th></tr></thead>
+              <tbody>
+                {[0, 1, 2, 3].map(i => (
+                  <tr key={i}>{Array.from({ length: 6 }).map((_, j) => <td key={j}><div className="cx-skeleton" style={{ height: 12, width: '70%' }} /></td>)}</tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : usuarios.length === 0 ? (
-          <p className="py-10 text-center text-slate-400 text-sm">No hay usuarios</p>
+          <div className="cx-empty" style={{ border: 'none', padding: '44px 24px' }}>
+            <div className="cx-empty-icon"><UserCog size={24} /></div>
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, margin: '6px 0 0' }}>No hay usuarios</p>
+          </div>
         ) : (
-          <>
-            {/* Tarjetas móvil */}
-            <div className="sm:hidden divide-y divide-slate-100 dark:divide-navy-600">
-              {usuarios.map(u => (
-                <div key={u.id} className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium text-navy-500 dark:text-white truncate">{u.nombre}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{u.email}</p>
-                      <p className="text-xs text-slate-400 mt-1">{u.area || '-'}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <Badge className={ROLES_COLOR[u.rol]}>{ROLES_LABEL[u.rol]}</Badge>
-                      <Badge className={u.activo ? 'bg-cgreen-100 text-cgreen-800 dark:bg-cgreen-900/30 dark:text-cgreen-300' : 'bg-slate-100 text-slate-600'}>
-                        {u.activo ? 'Activo' : 'Inactivo'}
-                      </Badge>
-                      <div className="flex gap-1">
-                        <button onClick={() => setModal(u)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-navy-600 text-slate-500 hover:text-orange-500 transition-colors">
-                          <Edit2 size={14} />
-                        </button>
-                        <button onClick={() => setConfirmId(u.id)} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-500 hover:text-red-500 transition-colors">
-                          <UserX size={14} />
-                        </button>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="cx-table" style={{ minWidth: 600 }}>
+              <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Área</th><th>Estado</th><th></th></tr></thead>
+              <tbody>
+                {usuarios.map(u => (
+                  <tr key={u.id}>
+                    <td style={{ fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-accent-subtle-bg)', color: 'var(--color-accent-subtle-text)', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{iniciales(u.nombre)}</span>
+                        {u.nombre}
                       </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Tabla escritorio */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-navy-800">
-                  <tr className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
-                    <th className="text-left px-4 py-3">Nombre</th>
-                    <th className="text-left px-4 py-3">Email</th>
-                    <th className="text-left px-4 py-3">Rol</th>
-                    <th className="text-left px-4 py-3">Área</th>
-                    <th className="text-left px-4 py-3">Estado</th>
-                    <th className="text-left px-4 py-3">Acciones</th>
+                    </td>
+                    <td className="text-muted">{u.email}</td>
+                    <td><span className={`cx-tag ${ROLES_TAG[u.rol]}`}>{ROLES_LABEL[u.rol]}</span></td>
+                    <td className="text-muted">{u.area || '-'}</td>
+                    <td><span className={`cx-tag ${u.activo ? 'cx-tag-success' : 'cx-tag-neutral'}`}>{u.activo ? 'Activo' : 'Inactivo'}</span></td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button type="button" className="cx-btn cx-btn-ghost cx-btn-icon" onClick={() => setModal(u)}><Edit2 size={14} /></button>
+                      <button type="button" className="cx-btn cx-btn-ghost cx-btn-icon" onClick={() => setConfirmId(u.id)}><UserX size={14} /></button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-navy-600">
-                  {usuarios.map(u => (
-                    <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-navy-700/50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-navy-500 dark:text-white">{u.nombre}</td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{u.email}</td>
-                      <td className="px-4 py-3"><Badge className={ROLES_COLOR[u.rol]}>{ROLES_LABEL[u.rol]}</Badge></td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{u.area || '-'}</td>
-                      <td className="px-4 py-3">
-                        <Badge className={u.activo ? 'bg-cgreen-100 text-cgreen-800 dark:bg-cgreen-900/30 dark:text-cgreen-300' : 'bg-slate-100 text-slate-600'}>
-                          {u.activo ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button onClick={() => setModal(u)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-navy-600 text-slate-500 hover:text-orange-500 transition-colors">
-                            <Edit2 size={14} />
-                          </button>
-                          <button onClick={() => setConfirmId(u.id)} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-500 hover:text-red-500 transition-colors">
-                            <UserX size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-        <div className="px-4 pb-4">
-          <Pagination page={pagination.page} totalPages={pagination.totalPages} onChange={cargar} />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, padding: 16 }}>
+          <button type="button" className="cx-btn cx-btn-ghost cx-btn-icon" disabled={pagination.page <= 1} onClick={() => cargar(pagination.page - 1)}>‹</button>
+          <span className="text-muted" style={{ fontSize: 12 }}>Página {pagination.page} de {pagination.totalPages}</span>
+          <button type="button" className="cx-btn cx-btn-ghost cx-btn-icon" disabled={pagination.page >= pagination.totalPages} onClick={() => cargar(pagination.page + 1)}>›</button>
         </div>
-      </Card>
+      </div>
 
       {modal && (
         <UsuarioForm
