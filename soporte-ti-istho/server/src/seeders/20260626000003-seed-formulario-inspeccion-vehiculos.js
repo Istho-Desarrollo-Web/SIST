@@ -123,6 +123,12 @@ module.exports = {
     const now = new Date();
     const q = (sql) => queryInterface.sequelize.query(sql, { type: queryInterface.sequelize.QueryTypes.SELECT });
 
+    const [yaExiste] = await q("SELECT id FROM formularios WHERE nombre = 'GT-FT-07 - Inspección de Vehículos Terceros' LIMIT 1");
+    if (yaExiste) {
+      console.log('[seed-formulario-inspeccion-vehiculos] Ya existe — se omite el insert.');
+      return;
+    }
+
     const [adminRow] = await q("SELECT id FROM usuarios WHERE email = 'admin@istho.com.co' LIMIT 1");
     const creadoPor = adminRow?.id || 1;
 

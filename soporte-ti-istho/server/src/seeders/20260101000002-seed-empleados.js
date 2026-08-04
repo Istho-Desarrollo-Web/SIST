@@ -1,7 +1,18 @@
 'use strict';
 
+const IDENTIFICACIONES = ['1000000010', '1000000011', '1000000012'];
+
 module.exports = {
-  async up(queryInterface) {
+  async up(queryInterface, Sequelize) {
+    const existentes = await queryInterface.sequelize.query(
+      'SELECT identificacion FROM empleados WHERE identificacion IN (:ids)',
+      { replacements: { ids: IDENTIFICACIONES }, type: Sequelize.QueryTypes.SELECT }
+    );
+    if (existentes.length > 0) {
+      console.log('[seed-empleados] Ya existen empleados seed — se omite el insert.');
+      return;
+    }
+
     const now = new Date();
 
     await queryInterface.bulkInsert('empleados', [

@@ -27,6 +27,11 @@ const PLAN = [
 
 module.exports = {
   async up() {
+    if (process.env.NODE_ENV === 'production') {
+      console.log('[seed-solicitudes-demo] Entorno de producción — se omite el seed de solicitudes de demostración.');
+      return;
+    }
+
     const [carlos, maria] = await Promise.all([
       Usuario.findOne({ where: { email: 'carlos.tecnico@istho.com.co' } }),
       Usuario.findOne({ where: { email: 'maria.tecnico@istho.com.co' } }),

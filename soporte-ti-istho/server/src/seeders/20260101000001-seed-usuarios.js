@@ -1,8 +1,19 @@
 'use strict';
 const bcrypt = require('bcryptjs');
 
+const EMAILS = ['admin@istho.com.co', 'carlos.tecnico@istho.com.co', 'maria.tecnico@istho.com.co'];
+
 module.exports = {
-  async up(queryInterface) {
+  async up(queryInterface, Sequelize) {
+    const existentes = await queryInterface.sequelize.query(
+      'SELECT email FROM usuarios WHERE email IN (:emails)',
+      { replacements: { emails: EMAILS }, type: Sequelize.QueryTypes.SELECT }
+    );
+    if (existentes.length > 0) {
+      console.log('[seed-usuarios] Ya existen usuarios seed — se omite el insert.');
+      return;
+    }
+
     const hash = (pwd) => bcrypt.hashSync(pwd, 10);
     const now = new Date();
 

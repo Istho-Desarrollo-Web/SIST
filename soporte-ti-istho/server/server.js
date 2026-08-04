@@ -8,7 +8,11 @@ const PORT = process.env.PORT || 5000;
 
 function migrarYSembrar() {
   execSync('npx sequelize-cli db:migrate', { stdio: 'inherit' });
-  execSync('npx sequelize-cli db:seed:all', { stdio: 'inherit' });
+  try {
+    execSync('npx sequelize-cli db:seed:all', { stdio: 'inherit' });
+  } catch (err) {
+    logger.warn('Seed falló, se continúa el arranque (los seeders son datos iniciales, no deben bloquear el servidor)', { error: err.message });
+  }
 }
 
 async function start() {
