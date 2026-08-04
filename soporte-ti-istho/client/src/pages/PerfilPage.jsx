@@ -9,7 +9,7 @@ import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 
 const schema = z.object({
-  passwordActual: z.string().min(1, 'Requerido'),
+  passwordActual: z.string().min(1, 'La contraseña actual es requerida'),
   passwordNuevo: z.string().min(8, 'Mínimo 8 caracteres'),
   confirmar: z.string(),
 }).refine(d => d.passwordNuevo === d.confirmar, {
