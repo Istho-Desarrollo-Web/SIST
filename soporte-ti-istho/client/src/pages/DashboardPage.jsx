@@ -284,7 +284,11 @@ export function DashboardPage() {
                 const iconBg = esCreacion ? 'var(--color-success-subtle-bg)' : 'var(--color-warning-subtle-bg)';
                 const iconColor = esCreacion ? 'var(--color-success-subtle-text)' : 'var(--color-warning-subtle-text)';
                 return (
-                  <div key={item.id} style={{ display: 'flex', gap: 12, padding: '12px 10px', margin: '0 -10px', borderBottom: '1px solid var(--color-border)', borderRadius: 8 }}>
+                  <div
+                    key={item.id}
+                    style={{ display: 'flex', gap: 12, padding: '12px 10px', margin: '0 -10px', borderBottom: '1px solid var(--color-border)', borderRadius: 8, cursor: 'pointer' }}
+                    onClick={() => navigate('/solicitudes', { state: { search: item.solicitudNumero } })}
+                  >
                     <span style={{ width: 26, height: 26, borderRadius: '50%', background: iconBg, display: 'grid', placeItems: 'center', flex: 'none', marginTop: 1 }}>
                       {esCreacion ? <PlusCircle size={13} color={iconColor} /> : <RefreshCw size={13} color={iconColor} />}
                     </span>
