@@ -39,6 +39,7 @@ export function SolicitudesPage() {
   const [searchInput, setSearchInput] = useState(filters.search);
   const hayFiltrosActivos = !!(filters.search || filters.estado || filters.prioridad);
   const limpiarFiltros = () => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
     setSearchInput('');
     setFilters({ estado: '', prioridad: '', search: '' });
   };
