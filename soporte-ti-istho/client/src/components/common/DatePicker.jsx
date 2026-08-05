@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 
 const DAYS_HEADER = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'];
 const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -27,8 +28,10 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   const [view, setView] = useState('day');
   const [display, setDisplay] = useState(() => parseValue(value) || new Date());
   const [popupStyle, setPopupStyle] = useState({});
+  const wrapperRef = useRef(null);
   const triggerRef = useRef(null);
   const popupRef = useRef(null);
+  const popupId = useId();
 
   useEffect(() => {
     const d = parseValue(value);
@@ -38,7 +41,7 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   useEffect(() => {
     function onOutside(e) {
       if (
-        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        wrapperRef.current && !wrapperRef.current.contains(e.target) &&
         popupRef.current && !popupRef.current.contains(e.target)
       ) {
         setOpen(false);
@@ -48,6 +51,8 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
     document.addEventListener('mousedown', onOutside);
     return () => document.removeEventListener('mousedown', onOutside);
   }, []);
+
+  useDialogFocus(popupRef, open, () => { setOpen(false); setView('day'); });
 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;
@@ -109,18 +114,25 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
     view === 'month' ? String(year) :
     `${MONTHS_FULL[month]} ${year}`;
 
-  const fieldCls = 'w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800 focus:outline-none focus:ring-2 focus:ring-orange-500/50';
+  const navUnitLabel = view === 'year' ? 'Década' : view === 'month' ? 'Año' : 'Mes';
+
+  const fieldCls = 'w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-navy-500 text-sm bg-white dark:bg-navy-800';
 
   const popup = open ? (
     <div
       ref={popupRef}
+      id={popupId}
       style={popupStyle}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Seleccionar fecha"
       className="bg-white dark:bg-navy-800 rounded-xl shadow-xl border border-slate-200 dark:border-navy-600 overflow-hidden"
     >
       {/* Navigation header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-navy-700">
         <button
           onClick={prev}
+          aria-label={`${navUnitLabel} anterior`}
           className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-700 text-slate-500 dark:text-slate-400 transition-colors"
         >
           <ChevronLeft size={15} />
@@ -133,6 +145,7 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
         </button>
         <button
           onClick={next}
+          aria-label={`${navUnitLabel} siguiente`}
           className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-700 text-slate-500 dark:text-slate-400 transition-colors"
         >
           <ChevronRight size={15} />
@@ -234,30 +247,39 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   ) : null;
 
   return (
-    <div ref={triggerRef} className={`relative ${className}`}>
+    <div ref={wrapperRef} className={`relative ${className}`}>
       {label && (
         <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">
           {label}
         </label>
       )}
 
-      <div
-        onClick={() => { setOpen(v => !v); setView('day'); }}
-        className={`${fieldCls} flex items-center justify-between gap-2 cursor-pointer select-none`}
-      >
-        <span className={selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}>
-          {selected ? toDisplay(selected) : placeholder}
-        </span>
+      <div className={`${fieldCls} flex items-center justify-between gap-2`}>
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => { setOpen(v => !v); setView('day'); }}
+          className="flex-1 min-w-0 flex items-center bg-transparent border-0 p-0 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 rounded"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls={open ? popupId : undefined}
+        >
+          <span className={selected ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}>
+            {selected ? toDisplay(selected) : placeholder}
+          </span>
+        </button>
         <div className="flex items-center gap-1 shrink-0">
           {value && (
-            <span
-              onClick={(e) => { e.stopPropagation(); onChange(''); }}
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              aria-label="Borrar fecha"
               className="p-0.5 rounded text-slate-400 hover:text-red-500 transition-colors"
             >
               <X size={12} />
-            </span>
+            </button>
           )}
-          <Calendar size={14} className="text-slate-400" />
+          <Calendar size={14} className="text-slate-400" aria-hidden="true" />
         </div>
       </div>
 
