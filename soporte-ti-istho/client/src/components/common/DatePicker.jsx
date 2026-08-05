@@ -32,6 +32,7 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   const triggerRef = useRef(null);
   const popupRef = useRef(null);
   const popupId = useId();
+  const triggerId = useId();
   const [activeDate, setActiveDate] = useState(() => parseValue(value) || new Date());
   const [prevOpenForActiveDate, setPrevOpenForActiveDate] = useState(open);
   const activeCellRef = useRef(null);
@@ -391,7 +392,8 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
       {label && (
-        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">
+        // eslint-disable-next-line jsx-a11y/label-has-for -- this deprecated rule's default "nesting" check only recognizes input/textarea/select as siblings, never button; the trigger is a button by design. Association is correctly made via htmlFor/id, which is exactly what the modern replacement rule jsx-a11y/label-has-associated-control (enabled, passing) validates
+        <label htmlFor={triggerId} className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">
           {label}
         </label>
       )}
@@ -402,6 +404,7 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
           type="button"
           onClick={() => { setOpen(v => !v); setView('day'); }}
           className="flex-1 min-w-0 flex items-center bg-transparent border-0 p-0 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 rounded"
+          id={triggerId}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={open ? popupId : undefined}
