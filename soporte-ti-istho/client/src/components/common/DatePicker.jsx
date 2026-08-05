@@ -88,7 +88,11 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
 
   if (open !== prevOpenForActiveDate) {
     setPrevOpenForActiveDate(open);
-    if (open) setActiveDate(selected || new Date());
+    if (open) {
+      const target = selected || new Date();
+      setActiveDate(target);
+      setDisplay(target);
+    }
   }
 
   const today = new Date();
@@ -97,14 +101,26 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   const yearStart = Math.floor(year / 12) * 12;
 
   const prev = () => {
-    if (view === 'year') setDisplay(new Date(yearStart - 12, month, 1));
-    else if (view === 'month') setDisplay(new Date(year - 1, month, 1));
-    else setDisplay(new Date(year, month - 1, 1));
+    if (view === 'year') {
+      setDisplay(new Date(yearStart - 12, month, 1));
+      setActiveDate(new Date(activeDate.getFullYear() - 12, activeDate.getMonth(), 1));
+    } else if (view === 'month') {
+      setDisplay(new Date(year - 1, month, 1));
+      setActiveDate(new Date(activeDate.getFullYear() - 1, activeDate.getMonth(), 1));
+    } else {
+      moveActiveMonthInYear(-1);
+    }
   };
   const next = () => {
-    if (view === 'year') setDisplay(new Date(yearStart + 12, month, 1));
-    else if (view === 'month') setDisplay(new Date(year + 1, month, 1));
-    else setDisplay(new Date(year, month + 1, 1));
+    if (view === 'year') {
+      setDisplay(new Date(yearStart + 12, month, 1));
+      setActiveDate(new Date(activeDate.getFullYear() + 12, activeDate.getMonth(), 1));
+    } else if (view === 'month') {
+      setDisplay(new Date(year + 1, month, 1));
+      setActiveDate(new Date(activeDate.getFullYear() + 1, activeDate.getMonth(), 1));
+    } else {
+      moveActiveMonthInYear(1);
+    }
   };
 
   const cycleView = () => setView(v => v === 'day' ? 'month' : v === 'month' ? 'year' : 'day');
