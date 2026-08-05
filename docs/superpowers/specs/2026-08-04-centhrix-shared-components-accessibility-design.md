@@ -74,7 +74,7 @@ Hoy el trigger es un `<button>` real (correcto), pero el panel de opciones (lín
 
 La estructura visual (`cx-select-trigger`, `cx-select-panel`, `cx-select-option`) no cambia — esto es una reescritura de la lógica de apertura/navegación/selección, no del CSS.
 
-## 3. `DatePicker.jsx` — la pieza más grande
+## 4. `DatePicker.jsx` — la pieza más grande
 
 Hoy el trigger es un `<div onClick>` (línea 244) — el único de los 4 casos que ni siquiera se puede abrir con teclado. Una vez abierto, los botones de navegación/día/mes/año ya son `<button>` reales (alcanzables con Tab), pero sin navegación por flechas.
 
@@ -98,11 +98,11 @@ No se toca el CSS Tailwind heredado de este archivo (`bg-white dark:bg-navy-800`
 
 Esta es, con diferencia, la pieza más grande del spec: es la única que toca lógica real de fechas (cruces de mes/año durante la navegación por teclado), no solo atributos ARIA y manejo de foco como las demás.
 
-## 4. `Pagination.jsx`
+## 5. `Pagination.jsx`
 
 Los dos botones de ícono (`ChevronLeft`/`ChevronRight`, líneas 8 y 12) ganan `aria-label="Página anterior"` y `aria-label="Página siguiente"` respectivamente. Ya son `<button>` reales con `disabled` correcto — cambio mínimo, sin riesgo, sin lógica nueva.
 
-## 5. Tooling: `eslint-plugin-jsx-a11y`
+## 6. Tooling: `eslint-plugin-jsx-a11y`
 
 - Se agrega como devDependency (`npm install -D eslint-plugin-jsx-a11y` dentro de `client/`).
 - En `eslint.config.js` se agrega un bloque adicional (junto al existente `files: ['**/*.{js,jsx}']`) que aplica `jsxA11y.flatConfigs.recommended` con severidad `error` **solo** a los 5 archivos de este spec (glob explícito: `client/src/components/common/{Modal,ConfirmDialog,Select,DatePicker,Pagination}.jsx`) y con severidad `warn` al resto de `**/*.{js,jsx}` (recordatorio no bloqueante sobre las violaciones ya identificadas y explícitamente diferidas: divs-clicables de página, botones de ícono sin `aria-label` en páginas, etc.).
