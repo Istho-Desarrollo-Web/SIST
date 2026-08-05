@@ -27,7 +27,7 @@ export function useDialogFocus(dialogRef, open, onClose) {
     function onKeyDown(e) {
       if (e.key === 'Escape') {
         if (e.defaultPrevented) return;
-        if (node && !node.contains(document.activeElement)) return;
+        if (node && document.activeElement !== document.body && !node.contains(document.activeElement)) return;
         onCloseRef.current();
         return;
       }
