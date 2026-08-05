@@ -83,6 +83,7 @@
 .cx-select-option { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: var(--radius-sm); font-size: var(--text-base); cursor: pointer; color: var(--color-text); }
 .cx-select-option:hover { background: var(--accent-100); color: var(--accent-800); }
 .cx-select-option.selected { color: var(--accent-700); font-weight: 600; }
+.cx-select-option.active { background: var(--accent-100); color: var(--accent-800); }
 
 /* Custom date field */
 .cx-date-panel { position: absolute; top: calc(100% + 6px); left: 0; width: 260px; background: var(--color-card); border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-md); padding: 12px; z-index: 20; animation: cx-scale-in var(--duration-fast) var(--ease-out); }
