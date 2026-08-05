@@ -32,6 +32,9 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   const triggerRef = useRef(null);
   const popupRef = useRef(null);
   const popupId = useId();
+  const [activeDate, setActiveDate] = useState(() => parseValue(value) || new Date());
+  const [prevOpenForActiveDate, setPrevOpenForActiveDate] = useState(open);
+  const activeCellRef = useRef(null);
 
   useEffect(() => {
     const d = parseValue(value);
@@ -53,6 +56,10 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   }, []);
 
   useDialogFocus(popupRef, open, () => { setOpen(false); setView('day'); });
+
+  useEffect(() => {
+    if (open) activeCellRef.current?.focus();
+  }, [open, view, activeDate]);
 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;
@@ -78,6 +85,12 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   }, [open]);
 
   const selected = parseValue(value);
+
+  if (open !== prevOpenForActiveDate) {
+    setPrevOpenForActiveDate(open);
+    if (open) setActiveDate(selected || new Date());
+  }
+
   const today = new Date();
   const year = display.getFullYear();
   const month = display.getMonth();
@@ -101,6 +114,103 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
     setOpen(false);
     setView('day');
   };
+
+  function moveActiveDay(deltaDays) {
+    const next = new Date(activeDate);
+    next.setDate(next.getDate() + deltaDays);
+    if (next.getMonth() !== display.getMonth() || next.getFullYear() !== display.getFullYear()) {
+      setDisplay(new Date(next.getFullYear(), next.getMonth(), 1));
+    }
+    setActiveDate(next);
+  }
+
+  function moveActiveMonthInYear(deltaMonths) {
+    const next = new Date(activeDate.getFullYear(), activeDate.getMonth() + deltaMonths, 1);
+    const daysInNext = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+    next.setDate(Math.min(activeDate.getDate(), daysInNext));
+    setDisplay(new Date(next.getFullYear(), next.getMonth(), 1));
+    setActiveDate(next);
+  }
+
+  function handleDayKeyDown(e) {
+    switch (e.key) {
+      case 'ArrowLeft': e.preventDefault(); moveActiveDay(-1); break;
+      case 'ArrowRight': e.preventDefault(); moveActiveDay(1); break;
+      case 'ArrowUp': e.preventDefault(); moveActiveDay(-7); break;
+      case 'ArrowDown': e.preventDefault(); moveActiveDay(7); break;
+      case 'Home': {
+        e.preventDefault();
+        moveActiveDay(-activeDate.getDay());
+        break;
+      }
+      case 'End': {
+        e.preventDefault();
+        moveActiveDay(6 - activeDate.getDay());
+        break;
+      }
+      case 'PageUp':
+        e.preventDefault();
+        moveActiveMonthInYear(e.shiftKey ? -12 : -1);
+        break;
+      case 'PageDown':
+        e.preventDefault();
+        moveActiveMonthInYear(e.shiftKey ? 12 : 1);
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        selectDay(activeDate.getDate());
+        break;
+      default:
+        break;
+    }
+  }
+
+  function moveActiveMonthCell(delta) {
+    const m = ((activeDate.getMonth() + delta) % 12 + 12) % 12;
+    setActiveDate(new Date(activeDate.getFullYear(), m, 1));
+  }
+
+  function handleMonthKeyDown(e) {
+    switch (e.key) {
+      case 'ArrowLeft': e.preventDefault(); moveActiveMonthCell(-1); break;
+      case 'ArrowRight': e.preventDefault(); moveActiveMonthCell(1); break;
+      case 'ArrowUp': e.preventDefault(); moveActiveMonthCell(-3); break;
+      case 'ArrowDown': e.preventDefault(); moveActiveMonthCell(3); break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        setDisplay(new Date(activeDate.getFullYear(), activeDate.getMonth(), 1));
+        setView('day');
+        break;
+      default:
+        break;
+    }
+  }
+
+  function moveActiveYearCell(delta) {
+    const currentYearStart = Math.floor(activeDate.getFullYear() / 12) * 12;
+    const offset = activeDate.getFullYear() - currentYearStart;
+    const nextOffset = ((offset + delta) % 12 + 12) % 12;
+    setActiveDate(new Date(currentYearStart + nextOffset, activeDate.getMonth(), 1));
+  }
+
+  function handleYearKeyDown(e) {
+    switch (e.key) {
+      case 'ArrowLeft': e.preventDefault(); moveActiveYearCell(-1); break;
+      case 'ArrowRight': e.preventDefault(); moveActiveYearCell(1); break;
+      case 'ArrowUp': e.preventDefault(); moveActiveYearCell(-3); break;
+      case 'ArrowDown': e.preventDefault(); moveActiveYearCell(3); break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        setDisplay(new Date(activeDate.getFullYear(), activeDate.getMonth(), 1));
+        setView('month');
+        break;
+      default:
+        break;
+    }
+  }
 
   const firstDayOfMonth = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -167,10 +277,14 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
               if (!day) return <div key={i} />;
               const isSel = selected && selected.getFullYear() === year && selected.getMonth() === month && selected.getDate() === day;
               const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+              const isActiveCell = activeDate.getFullYear() === year && activeDate.getMonth() === month && activeDate.getDate() === day;
               return (
                 <button
                   key={i}
+                  ref={isActiveCell ? activeCellRef : undefined}
+                  tabIndex={isActiveCell ? 0 : -1}
                   onClick={() => selectDay(day)}
+                  onKeyDown={handleDayKeyDown}
                   className={`w-full aspect-square rounded-lg text-xs font-medium transition-colors
                     ${isSel
                       ? 'bg-orange-500 text-white'
@@ -189,36 +303,48 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
       {/* Month grid */}
       {view === 'month' && (
         <div className="p-3 grid grid-cols-3 gap-2">
-          {MONTHS_SHORT.map((m, i) => (
-            <button
-              key={m}
-              onClick={() => { setDisplay(new Date(year, i, 1)); setView('day'); }}
-              className={`py-2.5 rounded-lg text-sm font-medium transition-colors
-                ${month === i
-                  ? 'bg-orange-500 text-white'
-                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-700'}`}
-            >
-              {m}
-            </button>
-          ))}
+          {MONTHS_SHORT.map((m, i) => {
+            const isActiveCell = activeDate.getFullYear() === year && activeDate.getMonth() === i;
+            return (
+              <button
+                key={m}
+                ref={isActiveCell ? activeCellRef : undefined}
+                tabIndex={isActiveCell ? 0 : -1}
+                onClick={() => { setDisplay(new Date(year, i, 1)); setActiveDate(new Date(year, i, 1)); setView('day'); }}
+                onKeyDown={handleMonthKeyDown}
+                className={`py-2.5 rounded-lg text-sm font-medium transition-colors
+                  ${month === i
+                    ? 'bg-orange-500 text-white'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-700'}`}
+              >
+                {m}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {/* Year grid */}
       {view === 'year' && (
         <div className="p-3 grid grid-cols-3 gap-2">
-          {Array.from({ length: 12 }, (_, i) => yearStart + i).map(y => (
-            <button
-              key={y}
-              onClick={() => { setDisplay(new Date(y, month, 1)); setView('month'); }}
-              className={`py-2.5 rounded-lg text-sm font-medium transition-colors
-                ${year === y
-                  ? 'bg-orange-500 text-white'
-                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-700'}`}
-            >
-              {y}
-            </button>
-          ))}
+          {Array.from({ length: 12 }, (_, i) => yearStart + i).map(y => {
+            const isActiveCell = activeDate.getFullYear() === y;
+            return (
+              <button
+                key={y}
+                ref={isActiveCell ? activeCellRef : undefined}
+                tabIndex={isActiveCell ? 0 : -1}
+                onClick={() => { setDisplay(new Date(y, month, 1)); setActiveDate(new Date(y, month, 1)); setView('month'); }}
+                onKeyDown={handleYearKeyDown}
+                className={`py-2.5 rounded-lg text-sm font-medium transition-colors
+                  ${year === y
+                    ? 'bg-orange-500 text-white'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-navy-700'}`}
+              >
+                {y}
+              </button>
+            );
+          })}
         </div>
       )}
 
