@@ -13,7 +13,9 @@ const A11Y_STRICT_FILES = [
   'src/components/common/Pagination.jsx',
 ]
 
-const a11yRuleNames = Object.keys(jsxA11y.flatConfigs.recommended.rules)
+const a11yRuleNames = Object.entries(jsxA11y.flatConfigs.recommended.rules)
+  .filter(([, severity]) => severity !== 'off' && severity !== 0)
+  .map(([name]) => name)
 const a11yWarnRules = Object.fromEntries(a11yRuleNames.map((rule) => [rule, 'warn']))
 const a11yErrorRules = Object.fromEntries(a11yRuleNames.map((rule) => [rule, 'error']))
 

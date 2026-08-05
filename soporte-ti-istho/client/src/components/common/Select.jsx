@@ -139,6 +139,7 @@ export function Select({ value, onChange, options = [], placeholder = 'Seleccion
         break;
       case 'Escape':
         e.preventDefault();
+        e.stopPropagation();
         closeDropdown();
         break;
       case 'Tab':
@@ -161,6 +162,7 @@ export function Select({ value, onChange, options = [], placeholder = 'Seleccion
       className="cx-select-panel"
       role="listbox"
       id={listboxId}
+      aria-labelledby={triggerId}
     >
       {options.map((opt, index) => {
         const isSelected = String(opt.value) === String(value);
@@ -186,7 +188,6 @@ export function Select({ value, onChange, options = [], placeholder = 'Seleccion
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {/* eslint-disable-next-line jsx-a11y/label-has-for -- this deprecated rule's default "nesting" check only recognizes input/textarea/select as siblings, never button; the trigger is a button by design (see WAI-ARIA select-only combobox note above). Association is correctly made via htmlFor/id, which is exactly what the modern replacement rule jsx-a11y/label-has-associated-control (enabled, passing) validates */}
       {label && <label htmlFor={triggerId} className="cx-label" style={{ display: 'block', marginBottom: 4 }}>{label}</label>}
 
       <button
@@ -200,7 +201,7 @@ export function Select({ value, onChange, options = [], placeholder = 'Seleccion
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-controls={listboxId}
+        aria-controls={open ? listboxId : undefined}
         aria-activedescendant={activeOptionId}
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: selected ? 'var(--color-text)' : 'var(--color-text-muted)' }}>

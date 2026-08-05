@@ -133,20 +133,20 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   };
 
   function moveActiveDay(deltaDays) {
-    const next = new Date(activeDate);
-    next.setDate(next.getDate() + deltaDays);
-    if (next.getMonth() !== display.getMonth() || next.getFullYear() !== display.getFullYear()) {
-      setDisplay(new Date(next.getFullYear(), next.getMonth(), 1));
+    const target = new Date(activeDate);
+    target.setDate(target.getDate() + deltaDays);
+    if (target.getMonth() !== display.getMonth() || target.getFullYear() !== display.getFullYear()) {
+      setDisplay(new Date(target.getFullYear(), target.getMonth(), 1));
     }
-    setActiveDate(next);
+    setActiveDate(target);
   }
 
   function moveActiveMonthInYear(deltaMonths) {
-    const next = new Date(activeDate.getFullYear(), activeDate.getMonth() + deltaMonths, 1);
-    const daysInNext = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-    next.setDate(Math.min(activeDate.getDate(), daysInNext));
-    setDisplay(new Date(next.getFullYear(), next.getMonth(), 1));
-    setActiveDate(next);
+    const target = new Date(activeDate.getFullYear(), activeDate.getMonth() + deltaMonths, 1);
+    const daysInNext = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+    target.setDate(Math.min(activeDate.getDate(), daysInNext));
+    setDisplay(new Date(target.getFullYear(), target.getMonth(), 1));
+    setActiveDate(target);
   }
 
   function handleDayKeyDown(e) {
@@ -392,7 +392,6 @@ export function DatePicker({ value, onChange, placeholder = 'dd/mm/aaaa', label,
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
       {label && (
-        // eslint-disable-next-line jsx-a11y/label-has-for -- this deprecated rule's default "nesting" check only recognizes input/textarea/select as siblings, never button; the trigger is a button by design. Association is correctly made via htmlFor/id, which is exactly what the modern replacement rule jsx-a11y/label-has-associated-control (enabled, passing) validates
         <label htmlFor={triggerId} className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">
           {label}
         </label>
